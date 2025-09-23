@@ -31,18 +31,20 @@
 
 ## 📁 프로젝트 구조
 ```
-├── code
-│   ├── jupyter_notebooks
-│   │   └── model_train.ipynb
-│   └── train.py
-├── docs
-│   ├── pdf
-│   │   └── (Template) [패스트캠퍼스] Upstage AI Lab 1기_그룹 스터디 .pptx
-│   └── paper
-└── input
-    └── data
-        ├── eval
-        └── train
+├─ README.md
+│  
+├─ data			    	# 데이터 파일
+├─ docker			    # Docker 설정 파일
+├─ jupyter_notebooks	# Jupyter notebook 파일
+├─ log				    # 로그 파일
+├─ model				# 모델 학습 파일
+├─ requirements		    # 의존성 관리 파일
+├─ src				    # 소스 코드
+├─ tests				# 테스트 코드
+└─ docs				    # 문서 파일
+    ├─ pdf
+    │   └─ (Template) [패스트캠퍼스] Upstage AI Lab 1기_그룹 스터디 .pptx
+    └─ paper
 ```
 
 <br>
