@@ -1,0 +1,9 @@
+python-dotenv
+pandas
+numpy
+scikit-learn
+fastapi
+uvicorn
+pydantic
+torch
+SQLAlchemy
