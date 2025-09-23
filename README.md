@@ -31,20 +31,27 @@
 
 ## 📁 프로젝트 구조
 ```
-├─ README.md
-│  
-├─ data			    	# 데이터 파일
-├─ docker			    # Docker 설정 파일
-├─ jupyter_notebooks	# Jupyter notebook 파일
-├─ log				    # 로그 파일
-├─ model				# 모델 학습 파일
-├─ requirements		    # 의존성 관리 파일
-├─ src				    # 소스 코드
-├─ tests				# 테스트 코드
-└─ docs				    # 문서 파일
-    ├─ pdf
-    │   └─ (Template) [패스트캠퍼스] Upstage AI Lab 1기_그룹 스터디 .pptx
-    └─ paper
+mlops-cloud-project-mlops-2/
+├─ src/                         # 애플리케이션 코드(한 눈에)
+│  ├─ data/                     # 데이터 수집/전처리
+│  ├─ model/                    # 모델 정의/저장/로딩
+│  ├─ api/                      # 웹 API (FastAPI)
+│  │  └─ webapp.py              
+│  └─ utils/                    # 공통 유틸
+│     ├─ enums.py               
+│     └─ utils.py               # 경로, 재현성 등(seed 고정)
+├─ dataset/                     
+├─ models/                      
+├─ tests/
+├─ docs/
+├─ logs/
+├─ docker/
+├─ notebooks/                   # 탐색/실험 노트
+├─ web/                         # 정적 웹(React) 소스
+├─ .env.example                 # 환경변수 템플릿(값 비움)
+├─ requirements.txt             # 의존성(또는 pyproject.toml)
+├─ .gitignore
+└─ README.md
 ```
 
 <br>
