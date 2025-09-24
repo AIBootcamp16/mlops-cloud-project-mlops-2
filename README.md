@@ -1,15 +1,25 @@
-# 프로젝트 이름
+# 사용자 선호도 기반 음악 추천 시스템
 
 <br>
 
 ## 💻 프로젝트 소개
-### <프로젝트 소개>
-- 영화 추천 시스템
+### 🎧 Seed-based Music Recommendation System
 
-### <작품 소개>
-- 본 프로젝트는 MLOps 파이프라인을 적용한 영화 추천 시스템입니다.
-- 데이터 수집 → 전처리 → 모델 학습 및 성능 평가 → 배포/운영 → 모니터링 → UI 제공까지의 전 과정을 자동화하였습니다.
-- 단순한 추천 모델 구현을 넘어, 실제 서비스 환경에서 안정적이고 재현 가능한 엔드투엔드(End-to-End) 파이프라인을 구축하는 것을 목표로 하였습니다.
+사용자가 **검색으로 노래 5곡을 선택**하면, 해당 곡들의 **오디오 특성(Audio Features)**을 기반으로  
+콘텐츠 기반 추천(Content-based Filtering)을 수행하여 **맞춤형 추천 리스트**를 제공합니다.  
+
+Spotify API를 활용하여 **검색/메타데이터/오디오 특성**을 가져오며,  
+추천 알고리즘은 **코사인 유사도(Cosine Similarity)**를 기반으로 합니다.  
+
+<br>
+
+## ✨ Features
+- 🔍 **검색(Search)**: Spotify API를 통한 트랙 검색
+- 🎶 **Seed Selection**: 사용자가 좋아하는 노래 5곡 선택
+- 🧩 **프로필 벡터 생성**: 선택한 곡의 오디오 특성을 평균화하여 사용자 프로필 구성
+- 📊 **추천 리스트 생성**: 코사인 유사도로 후보 카탈로그와 비교하여 Top-K 추천
+- 🎧 **UI 제공**: Streamlit으로 간단한 웹 UI
+- ⚡ **API 제공**: FastAPI 기반 추천 API
 
 <br>
 
@@ -23,35 +33,28 @@
 <br>
 
 ## 🔨 개발 환경 및 기술 스택
-- 주 언어 : _ex) python_
-- 버전 및 이슈관리 : _ex) github_
-- 협업 툴 : _ex) github, notion_
+- 주 언어 : python
+- 버전 및 이슈관리 : github
+- 협업 툴 : github, Jira
 
 <br>
 
 ## 📁 프로젝트 구조
 ```
 mlops-cloud-project-mlops-2/
-├─ src/                         # 애플리케이션 코드(한 눈에)
-│  ├─ data/                     # 데이터 수집/전처리
-│  ├─ model/                    # 모델 정의/저장/로딩
-│  ├─ api/                      # 웹 API (FastAPI)
-│  │  └─ webapp.py              
-│  └─ utils/                    # 공통 유틸
-│     ├─ enums.py               
-│     └─ utils.py               # 경로, 재현성 등(seed 고정)
-├─ dataset/                     
-├─ models/                      
-├─ tests/
-├─ docs/
-├─ logs/
-├─ docker/
-├─ notebooks/                   # 탐색/실험 노트
-├─ web/                         # 정적 웹(React) 소스
-├─ .env.example                 # 환경변수 템플릿(값 비움)
-├─ requirements.txt             # 의존성(또는 pyproject.toml)
-├─ .gitignore
-└─ README.md
+  ├─ data/
+  │   ├─ raw/                  # Spotify 원본 JSON
+  │   └─ processed/            # 전처리된 parquet (audio_features, catalog 등)
+  ├─ src/
+  │   ├─ auth/spotify_oauth.py
+  │   ├─ ingest/pull_spotify.py      # Spotify API 데이터 수집
+  │   ├─ model/profile.py            # 사용자 프로필 생성
+  │   ├─ model/similarity.py         # 코사인 유사도 추천
+  │   ├─ api/app.py                  # FastAPI (검색/추천 엔드포인트)
+  │   └─ ui/app.py                   # Streamlit UI
+  ├─ requirements.txt
+  ├─ docker-compose.yml
+  └─ README.md
 ```
 
 <br>
