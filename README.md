@@ -53,6 +53,7 @@ mlops-cloud-project-mlops-2/
   │   ├─ data
   │   ├─ model
   │   └─ utils
+  ├─ tests/
   ├─ web/
   ├─ .env.template
   ├─ requirements.txt
