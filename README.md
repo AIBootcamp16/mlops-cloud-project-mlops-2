@@ -42,18 +42,20 @@ Spotify API를 활용하여 **검색/메타데이터/오디오 특성**을 가�
 ## 📁 프로젝트 구조
 ```
 mlops-cloud-project-mlops-2/
-  ├─ data/
+  ├─ dataset/
   │   ├─ raw/                  # Spotify 원본 JSON
   │   └─ processed/            # 전처리된 parquet (audio_features, catalog 등)
+  ├─ docker/
+  ├─ docs/
+  ├─ notebooks/
   ├─ src/
-  │   ├─ auth/spotify_oauth.py
-  │   ├─ ingest/pull_spotify.py      # Spotify API 데이터 수집
-  │   ├─ model/profile.py            # 사용자 프로필 생성
-  │   ├─ model/similarity.py         # 코사인 유사도 추천
-  │   ├─ api/app.py                  # FastAPI (검색/추천 엔드포인트)
-  │   └─ ui/app.py                   # Streamlit UI
+  │   ├─ api
+  │   ├─ data
+  │   ├─ model
+  │   └─ utils
+  ├─ web/
+  ├─ .env.template
   ├─ requirements.txt
-  ├─ docker-compose.yml
   └─ README.md
 ```
 
