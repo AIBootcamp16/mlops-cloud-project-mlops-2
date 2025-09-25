@@ -41,6 +41,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.neighbors import NearestNeighbors
 import joblib
+import time
+
+from mysql_logger import MySQLLogger
+
+mysql_logger = MySQLLogger(
+    host="114.203.195.166", user="root", password="root", database="mlops", port=3306
+)
 
 NUMERIC_CANDIDATES = [
     "danceability","energy","loudness","speechiness","acousticness",
@@ -307,7 +314,33 @@ def _cli_fit(args):
 
 def _cli_rec(args):
     rec = Recommender.load(args.model_dir)
+    t0 = time.time()
     out = rec.recommend(by=args.by, query=args.q, top_k=args.top_k)
+    elapsed_sec = time.time() - t0
+    returned_ids = out["track_id"].tolist()
+    
+    # seeds: recommend(by, query)는 내부에서 매칭한 seed들을 사용함
+    # 간단히 'by,query'로 다시 찾아서 seed track_ids를 확보 (혹은 코드에 seed 반환값을 추가)
+    seed_ids = []
+    try:
+        matches = rec._lookup_indices(by=args.by, query=args.q)  # 내부 헬퍼 사용
+        seed_ids = rec.artifacts.id_index.iloc[matches]["track_id"].tolist()[:10]
+    except:
+        pass
+
+    # 지연시간은 호출부에서 측정했다고 가정 (없으면 0으로)
+    # elapsed_sec = 0.0
+    print("soeun!!")
+    print(returned_ids)
+    mysql_logger.log_recommend(
+        by_field=args.by,
+        query=args.q,
+        top_k=args.top_k,
+        elapsed_sec=elapsed_sec,
+        seed_track_ids=seed_ids,
+        returned_track_ids=returned_ids,
+    )
+    
     print(out.to_string(index=False))
 
 def _build_argparser():
