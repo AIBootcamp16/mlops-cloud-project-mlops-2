@@ -1,30 +1,16 @@
-import pandas as pd
+from __future__ import annotations
 
-class MusicDataPreProcessor:
-    def __init__(self, id_col: str = "track_id"):
-        self._data = pd.DataFrame()
-        self._processed = pd.DataFrame()
-        self.id_col = id_col
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
 
-    def load_data(self, file_path: str) -> pd.DataFrame:
-        self._data = pd.read_csv(file_path)
-        return self._data
-
-    def preprocess(self, dropna: bool = True, dedupe: bool = True) -> pd.DataFrame:
-        if self._data.empty:
-            raise ValueError("Call load_data() first.")
-        df = self._data.copy()
-        if dropna:
-            df = df.dropna()
-        if dedupe and self.id_col in df.columns:
-            df = df.drop_duplicates(subset=[self.id_col])
-        self._processed = df
-        return df
-
-    def save(self, file_path: str, index: bool = False) -> None:
-        if self._processed.empty:
-            raise ValueError("No processed data. Call preprocess() first.")
-        self._processed.to_csv(file_path, index=index)
-
-    def get_processed(self) -> pd.DataFrame:
-        return self._processed.copy()
+def build_preprocess_pipeline(num_cols, cat_cols) -> Pipeline:
+    preproc = ColumnTransformer(
+        transformers=[
+            ("num", StandardScaler(with_mean=True, with_std=True), num_cols),
+            ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), cat_cols),
+        ],
+        remainder="drop"
+    )
+    pipe = Pipeline([("preprocess", preproc)])
+    return pipe
