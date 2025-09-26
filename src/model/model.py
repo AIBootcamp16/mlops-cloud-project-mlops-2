@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 import joblib
+import faiss
+import pickle
+import lightgbm as lgb
+from sklearn.model_selection import train_test_split
 
 from ..data.features import (
     normalize_columns, coerce_types, basic_feature_engineering,
@@ -151,3 +155,160 @@ class Recommender:
             raise ValueError(f"No matches for {by} contains '{query}'.")
         seed_ids = self.artifacts.id_index.iloc[matches]["track_id"].tolist()
         return self.recommend_by_track_ids(seed_ids[:10], top_k=top_k)
+
+
+
+class FAISSRecommender:
+    #초기설정
+    def __init__(self, data: pd.DataFrame, features, nlist = 100):
+        # 피처 벡터화
+        self.df = data
+        self.features = features
+        self.X = data[features].astype("float32").values
+        d = self.X.shape[1]
+
+        # 3. IVF 인덱스 생성
+        quantizer = faiss.IndexFlatL2(d)
+        self.index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
+    #학습
+    def fit(self):
+        print("Training FAISS IVF index...")
+        self.index.train(self.X)
+
+        # 5. 벡터 추가
+        self.index.add(self.X)
+        print(f"Index built. Total vectors: {self.index.ntotal}")
+
+        # 6. 검색 편의용 매핑 (track_name, artist_name → index)
+        self.track_to_idx = {name.lower(): i for i, name in enumerate(self.df["track_name"])}
+        self.artist_to_idx = {}
+        for i, artists in enumerate(self.df["artist_name"]):
+            for artist in str(artists).split(","):
+                self.artist_to_idx[artist.strip().lower()] = i
+        self.id_to_idx = {tid: i for i, tid in enumerate(self.df["track_id"])}
+    #추천
+    def recommend(self, by: str, query: str, top_k: int = 5):
+        """track_id, track_name, artist_name 기준 추천"""
+        query_lower = query.lower()
+        if by == "track_id":
+            idx = self.id_to_idx.get(query)
+        elif by == "track_name":
+            idx = self.track_to_idx.get(query_lower)
+        elif by == "artist_name":
+            idx = self.artist_to_idx.get(query_lower)
+        else:
+            raise ValueError(f"Unsupported search key: {by}")
+
+        if idx is None:
+            raise ValueError(f"No results found for {by}='{query}'")
+
+        # FAISS 검색
+        query_vec = self.X[idx].reshape(1, -1)
+        distances, indices = self.index.search(query_vec, top_k)
+
+        # 결과 DataFrame 생성
+        results = []
+        for i, r_idx in enumerate(indices[0]):
+            results.append({
+                "rank": i + 1,
+                "track_id": self.df.loc[r_idx, "track_id"],
+                "track_name": self.df.loc[r_idx, "track_name"],
+                "artist_name": self.df.loc[r_idx, "artist_name"],
+                "distance": float(distances[0][i]),
+            })
+        return pd.DataFrame(results)
+    
+    # 모델 저장
+    def save(self, path: str):
+        """FAISS 인덱스와 매핑을 함께 저장"""
+        # 1. FAISS 인덱스 저장
+        faiss.write_index(self.index, f"{path}/faiss.index")
+
+        # 2. 매핑 객체 저장
+        with open(path, "wb") as f:
+            pickle.dump({
+                "track_to_idx": self.track_to_idx,
+                "artist_to_idx": self.artist_to_idx,
+                "id_to_idx": self.id_to_idx,
+                "features": self.features,
+                "X": self.X,
+                "df": self.df
+            }, f)
+        print(f"Model saved to {path}")
+
+    # 모델 불러오기
+    @classmethod
+    def load(cls, path: str):
+        """저장된 FAISS 인덱스와 매핑을 불러와 Recommender 객체 생성"""
+        # 1. 매핑 불러오기
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+
+        # 2. 객체 생성
+        obj = cls(data["df"], data["features"])
+        obj.X = data["X"]
+
+        # 3. FAISS 인덱스 불러오기
+        obj.index = faiss.read_index(f"{path}/faiss.index")
+
+        # 4. 매핑 복원
+        obj.track_to_idx = data["track_to_idx"]
+        obj.artist_to_idx = data["artist_to_idx"]
+        obj.id_to_idx = data["id_to_idx"]
+
+        print(f"Model loaded from {path}")
+        return obj
+
+class LGBMRecommender:
+    def __init__(self):
+        self.model = None
+        self.features = None
+
+    def fit(self, df: pd.DataFrame, features, target: str):
+        self.features = features
+        X = df[features]
+        y = df[target]
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        # LightGBM 회귀 모델 생성
+        self.model = lgb.LGBMRegressor(
+            n_estimators=1000,
+            num_leaves=31,
+            learning_rate=0.1,
+            num_threads=4,       # CPU 4코어 사용
+            random_state=42
+        )
+        # LGBMRegressor 학습 (sklearn API)
+        self.model.fit(
+            X_train, y_train,
+            eval_set=[(X_val, y_val)],
+            eval_metric='rmse',
+            callbacks=[
+                lgb.early_stopping(stopping_rounds=100),
+                lgb.log_evaluation(period=100)  # verbose 대신 사용
+            ]
+        )
+        print("LGBM model trained.")
+
+    def predict(self, df: pd.DataFrame) -> np.ndarray:
+        if self.model is None or self.features is None:
+            raise ValueError("Model is not trained yet.")
+        X = df[self.features]
+        return self.model.predict(X)
+
+    def save(self, path: str):
+        if self.model is None or self.features is None:
+            raise ValueError("Model is not trained yet.")
+        joblib.dump({
+            "model": self.model,
+            "features": self.features
+        }, path)
+        print(f"LGBM model saved to {path}")
+
+    @classmethod
+    def load(cls, path: str) -> "LGBMRecommender":
+        data = joblib.load(path)
+        obj = cls()
+        obj.model = data["model"]
+        obj.features = data["features"]
+        print(f"LGBM model loaded from {path}")
+        return obj
