@@ -8,6 +8,42 @@ import pandas as pd
 import streamlit as st
 import pymysql
 
+from contextlib import contextmanager
+import streamlit as st
+
+# ==============================
+# 로딩마스크
+# ==============================
+@contextmanager
+def tiny_loading(text: str = "로딩 중..."):
+    ph = st.empty()
+    ph.markdown(
+        f"""
+        <style>
+        .tiny-loader {{
+            display:inline-flex; align-items:center; gap:8px;
+            padding:6px 10px; border-radius:9999px;
+            background:rgba(0,0,0,0.08); font-size:13px;
+        }}
+        .tiny-spinner {{
+            width:14px; height:14px; border-radius:50%;
+            border:2px solid rgba(0,0,0,0.15);
+            border-top-color: rgba(0,0,0,0.6);
+            animation: tiny-rot 0.8s linear infinite;
+        }}
+        @keyframes tiny-rot {{ to {{ transform: rotate(360deg); }} }}
+        </style>
+        <span class="tiny-loader">
+          <span class="tiny-spinner"></span>{text}
+        </span>
+        """,
+        unsafe_allow_html=True,
+    )
+    try:
+        yield
+    finally:
+        ph.empty()
+
 # ==============================
 # 설정
 # ==============================
@@ -15,7 +51,7 @@ import pymysql
 DEFAULT_API_BASE = os.environ.get("API_BASE", "http://localhost:8000")
 API_BASE = st.secrets.get("API_BASE", DEFAULT_API_BASE)
 
-# ➜ DB 설정: 환경변수 우선, 없으면 기본값
+# DB 설정
 DB_CFG = dict(
     host=os.environ.get("MYSQL_HOST", "114.203.195.166"),
     user=os.environ.get("MYSQL_USER", "root"),
@@ -25,7 +61,7 @@ DB_CFG = dict(
     charset="utf8mb4",
 )
 
-# (선택) 파일 폴백 로그 경로: RecoLogger 파일백업을 쓴다면 여기를 참고
+# (선택) 파일 폴백 로그 경로
 FILE_FALLBACK_LOG = os.environ.get("RECO_LOG_FALLBACK", "./logs/reco_logs.csv")
 
 # ==============================
@@ -65,25 +101,26 @@ with tab1:
             st.warning("검색어를 입력해 주세요.")
         else:
             try:
-                t0 = time.time()
-                resp = requests.post(
-                    f"{API_BASE.rstrip('/')}/recommend",
-                    json={"by": query_by, "query": query_txt, "top_k": int(top_k)},
-                    timeout=30,
-                )
-                resp.raise_for_status()
-                items = resp.json().get("items", [])
-                elapsed = time.time() - t0
+                with tiny_loading("추천 생성 중..."):
+                    t0 = time.time()
+                    resp = requests.post(
+                        f"{API_BASE.rstrip('/')}/recommend",
+                        json={"by": query_by, "query": query_txt, "top_k": int(top_k)},
+                        timeout=30,
+                    )
+                    resp.raise_for_status()
+                    items = resp.json().get("items", [])
+                    elapsed = time.time() - t0
 
-                if not items:
-                    st.info("추천 결과가 없습니다.")
-                else:
-                    df = pd.DataFrame(items)
-                    st.success(f"추천 결과가 {elapsed:.3f}초 만에 생성됐어요.")
-                    # 주요 칼럼 우선 정렬
-                    prefer = [c for c in ["rank", "track_id", "track_name", "artist_name", "distance"] if c in df.columns]
-                    other = [c for c in df.columns if c not in prefer]
-                    st.dataframe(df[prefer + other], use_container_width=True)
+                    if not items:
+                        st.info("추천 결과가 없습니다.")
+                    else:
+                        df = pd.DataFrame(items)
+                        st.success(f"추천 결과가 {elapsed:.3f}초 만에 생성됐어요.")
+                        # 주요 칼럼 우선 정렬
+                        prefer = [c for c in ["rank", "track_id", "track_name", "artist_name", "distance"] if c in df.columns]
+                        other = [c for c in df.columns if c not in prefer]
+                        st.dataframe(df[prefer + other], use_container_width=True)
 
             except requests.exceptions.ConnectionError:
                 st.error(f"API에 연결할 수 없습니다: {API_BASE}")
