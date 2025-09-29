@@ -7,3 +7,6 @@ uvicorn
 pydantic
 torch
 SQLAlchemy
+# 누락된 라이브러리 추가
+faiss-cpu
+lightgbm
