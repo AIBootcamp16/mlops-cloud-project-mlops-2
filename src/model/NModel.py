@@ -26,7 +26,7 @@ from mlflow.artifacts import download_artifacts
 mlflow_addr = os.environ.get("MLFLOW_ADDR")
 
 mlflow.set_tracking_uri(f"{mlflow_addr}")
-mlflow.set_experiment("Recommender_Exp")
+mlflow.set_experiment("spotipy_recommender")
 
 class MLFLOWLogBuilder:
     def __init__(self,run_name):
@@ -206,6 +206,7 @@ class FAISSRecommender():
         # 1. FAISS 인덱스 저장
         os.makedirs(path, exist_ok=True)
         faiss_index_path = os.path.join(path, "faiss.index")
+        
         mapping_path = os.path.join(path, "mapping.pkl")
         faiss.write_index(self.index, faiss_index_path)
 
@@ -250,7 +251,6 @@ class FAISSRecommender():
     # 모델 불러오기
     @classmethod
     def MLFLOWload(cls):
-        """저장된 FAISS 인덱스와 매핑을 불러와 Recommender 객체 생성"""
         model_versions = mlflow.search_model_versions(filter_string = f"name='Recommender_FAISS'")
         FAISS_version = max(v.version for v in model_versions)
 
