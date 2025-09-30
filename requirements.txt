@@ -1,9 +1,26 @@
+# 환경/설정
 python-dotenv
+
+# 데이터 처리
 pandas
 numpy
 scikit-learn
+faiss-cpu
+lightgbm
+
+# 서버/API
 fastapi
 uvicorn
 pydantic
+
+# 모델/ML
 torch
+mlflow
+joblib
+
+# 데이터베이스/클라우드
 SQLAlchemy
+boto3
+
+# 기타
+requests
