@@ -16,7 +16,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build Docker image
-        run: docker build -t mlops-model .
+        run: docker build -t mlops-model:latest .
 
       - name: Run tests
         run: echo "Github Actions CI/CD test 성공!"
