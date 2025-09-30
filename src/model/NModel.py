@@ -430,8 +430,15 @@ class LGBMRecommender:
         prod_versions = [v for v in all_versions if v.tags.get("status") == "production"]
 
         model_uri = f"models:/spotipy_LGBM/{prod_versions[0].version}"
+        local_path = download_artifacts(
+            artifact_uri=model_uri + "/input_example.json"
+        )
+        
         result = LGBMRecommender()
         result.model_version = prod_versions[0].version
         model = mlflow.lightgbm.load_model(model_uri)
+        with open(local_path) as f:
+            features = json.load(f)
+        result.features = features['columns']
         result.model = model
         return result
