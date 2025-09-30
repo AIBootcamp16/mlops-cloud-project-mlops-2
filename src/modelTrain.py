@@ -27,6 +27,14 @@ FAISS_REC.release()
 
 LGBM_REC = LGBMRecommender()
 
+LGBM_REC.set_params({
+            "num_leaves": 36,
+            "learning_rate": 0.1,
+            "num_threads": 4,   # CPU 4코어 사용
+            "random_state": 42,
+            "n_estimators": 1000
+        })
+
 LGBM_REC.fit(df=df,features=features,target='popularity')
 
 LGBM_REC.MLFLOWProducionSelect()
