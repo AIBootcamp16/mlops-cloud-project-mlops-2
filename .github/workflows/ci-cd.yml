@@ -3,8 +3,6 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ "main" ]   # main 브랜치에 push 될 때 실행
-  pull_requests:
-    branches: ["main"]
 
 jobs:
   build:
