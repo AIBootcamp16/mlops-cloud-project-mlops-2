@@ -1,0 +1,28 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]   # main 브랜치에 push 될 때 실행
+  pull_requests:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image
+        run: docker build -t mlops-model .
+
+      - name: Run tests
+        run: echo "Github Actions CI/CD test 성공!"
+
+      - name: Run Python version check
+        run: python --version
+
