@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import csv
+import datetime
 from typing import Sequence
 from dataclasses import dataclass
 
@@ -48,8 +50,9 @@ class RecoLogger:
                     print(f"[RecoLogger] MySQL connect failed → fallback to file. err={e}")
 
         # 파일 백업 디렉토리 준비
-        if not os.path.exists(os.path.dirname(self.file_fallback_path) or "."):
-            os.makedirs(os.path.dirname(self.file_fallback_path), exist_ok=True)
+        dirpath = os.path.dirname(self.file_fallback_path)
+        if dirpath and not os.path.exists(dirpath):
+            os.makedirs(dirpath, exist_ok=True)
 
     def log_recommend(self, log: RecommendLog):
         # 1) MySQL 시도
@@ -60,8 +63,8 @@ class RecoLogger:
                     query=log.query,
                     top_k=log.top_k,
                     elapsed_sec=log.elapsed_sec,
-                    seed_track_ids=list(log.seed_track_ids),
-                    returned_track_ids=list(log.returned_track_ids),
+                    seed_track_ids=list(map(str, log.seed_track_ids)),
+                    returned_track_ids=list(map(str, log.returned_track_ids)),
                 )
                 if self.debug:
                     print("[RecoLogger] MySQL log OK")
@@ -73,8 +76,13 @@ class RecoLogger:
         # 2) 파일 백업 (CSV)
         ts = datetime.datetime.now().isoformat(timespec="seconds")
         row = [
-            ts, log.by_field, log.query, log.top_k, log.elapsed_sec,
-            "|".join(log.seed_track_ids), "|".join(log.returned_track_ids)
+            ts,
+            log.by_field,
+            log.query,
+            log.top_k,
+            float(log.elapsed_sec),
+            "|".join(map(str, log.seed_track_ids)),
+            "|".join(map(str, log.returned_track_ids)),
         ]
         header = ["ts","by_field","query","top_k","elapsed_sec","seed_track_ids","returned_track_ids"]
         write_header = not os.path.exists(self.file_fallback_path)

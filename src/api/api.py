@@ -9,6 +9,7 @@ import time
 import pickle
 import pandas as pd
 
+reco_logger = RecoLogger()
 myTopN_Model = TopN_Model()
 app = FastAPI()
 
@@ -83,6 +84,20 @@ def recommend(req: RecommendRankedRequest):
         t0 = time.time()
         TopN_result = myTopN_Model.Search(by=req.by, query=req.query, top_k=10)
         elapsed = time.time() - t0
+        
+        seed_ids = [req.query]                      # 시드 1개라고 가정
+        returned_ids = [rec for rec in TopN_result]  # 모델 결과
+        
+        reco_logger.log_recommend(
+            RecommendLog(
+                by_field="track_id",
+                query=str(req.query),
+                top_k=len(returned_ids),
+                elapsed_sec=float(elapsed),
+                seed_track_ids=seed_ids,
+                returned_track_ids=returned_ids,
+            )
+        )
         return {"items": TopN_result.to_dict(orient="records")}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
