@@ -92,7 +92,6 @@ tab1, tab2 = st.tabs(["🎶 음악 추천", "📊 품질 모니터링"])
 # Helpers
 # ---------------------
 def call_search(api_base: str, by: str, query: str, limit: int = 50) -> pd.DataFrame:
-    """Backend /search 호출 (API에 /search 엔드포인트가 있어야 합니다)"""
     url = f"{api_base.rstrip('/')}/search"
     payload = {"by": by, "query": query, "limit": int(limit)}
     resp = requests.post(url, json=payload, timeout=2000)
@@ -101,7 +100,6 @@ def call_search(api_base: str, by: str, query: str, limit: int = 50) -> pd.DataF
     return pd.DataFrame(items)
 
 def call_recommend(api_base: str, by: str, query: str, top_k: int, seed_max: int | None = 1) -> pd.DataFrame:
-    """Backend /recommend 호출"""
     url = f"{api_base.rstrip('/')}/recommend_ranked"
     payload = {"by": by, "query": query, "top_k": int(top_k)}
     if seed_max is not None:
@@ -226,16 +224,59 @@ with tab1:
                 st.exception(e)
 
 # ==============================
-# 탭 2: 품질 모니터링 (MySQL → 파일 폴백)
+# 탭 2: 품질 모니터링 (개편)
 # ==============================
 with tab2:
     st.header("추천 품질 대시보드")
 
-    df = pd.DataFrame()
+    N_LOGS = 500
     db_err = None
     try:
         con = pymysql.connect(**DB_CFG)
-        df = pd.read_sql("SELECT * FROM recommend_logs ORDER BY id DESC LIMIT 200", con)
+
+        # 1) 최근 로그
+        logs = pd.read_sql(f"""
+            SELECT id, ts_utc, by_field, query, top_k, elapsed_sec, diversity, avg_popularity, genre_precision, seed_track_ids
+            FROM recommend_logs
+            ORDER BY id DESC
+            LIMIT {N_LOGS}
+        """, con)
+
+        # 2) 최근 로그의 추천 아이템
+        if not logs.empty:
+            log_ids = tuple(logs["id"].tolist())
+            items = pd.read_sql(
+                f"""
+                SELECT ri.log_id, ri.`rank`, ri.track_id, ri.distance,
+                       m.track_name, m.artist_name, m.genre, m.year, m.popularity
+                FROM recommend_items ri
+                JOIN spotify_music m ON ri.track_id COLLATE utf8mb4_unicode_ci = m.track_id COLLATE utf8mb4_unicode_ci
+                WHERE ri.log_id IN {log_ids if len(log_ids) > 1 else f"({log_ids[0]})"}
+                """,
+                con,
+            )
+        else:
+            items = pd.DataFrame()
+
+        # 3) 시드 곡명 매핑 (최근 로그 표시에 사용)
+        seed_name_map = {}
+        if not logs.empty:
+            def parse_json_maybe(x):
+                if isinstance(x, list): return x
+                if isinstance(x, str):
+                    try: return json.loads(x)
+                    except Exception: return []
+                return []
+            logs["seed_ids_list"] = logs["seed_track_ids"].apply(parse_json_maybe)
+            seed_all = sorted({sid for lst in logs["seed_ids_list"] for sid in lst})
+            if seed_all:
+                qmarks = ",".join(["%s"] * len(seed_all))
+                seed_df = pd.read_sql(
+                    f"SELECT track_id, track_name FROM spotify_music WHERE track_id IN ({qmarks})",
+                    con, params=seed_all
+                )
+                seed_name_map = dict(zip(seed_df.track_id, seed_df.track_name))
+
     except Exception as e:
         db_err = e
     finally:
@@ -244,75 +285,80 @@ with tab2:
         except Exception:
             pass
 
-    if df.empty and db_err is not None:
-        st.warning(f"DB에서 로그를 불러오지 못했습니다: {db_err}")
-        # 파일 폴백 시도
-        if os.path.exists(FILE_FALLBACK_LOG):
-            try:
-                df = pd.read_csv(FILE_FALLBACK_LOG)
-                st.info(f"파일 폴백 로그를 사용합니다: {FILE_FALLBACK_LOG}")
-            except Exception as e:
-                st.error(f"폴백 로그도 읽을 수 없습니다: {e}")
-
-    if df.empty:
+    if db_err:
+        st.error(f"DB 오류: {db_err}")
+    if logs.empty:
         st.info("아직 로그가 없어요. 먼저 추천을 한 번 실행해 보세요.")
     else:
-        # 스키마 정리: ts(datetime), elapsed_sec(float), seed/returned(JSON 또는 문자열)
-        if "ts" in df.columns:
-            df["ts"] = pd.to_datetime(df["ts"], errors="coerce")
-        elif "ts_utc" in df.columns:
-            df["ts"] = pd.to_datetime(df["ts_utc"], errors="coerce")
+        # 공통 전처리
+        logs["ts"] = pd.to_datetime(logs["ts_utc"], errors="coerce")
+        logs["elapsed_sec"] = pd.to_numeric(logs["elapsed_sec"], errors="coerce")
+        logs["diversity"] = pd.to_numeric(logs["diversity"], errors="coerce")
+
+        # ======================
+        # 최근 추천 로그
+        # ======================
+        st.subheader("최근 추천 로그")
+        def seed_names(lst):
+            if not lst: return ""
+            return "; ".join([seed_name_map.get(s, s) for s in lst][:3])  # 최대 3개만 축약
+
+        show = logs[["ts", "seed_ids_list", "elapsed_sec"]].copy()
+        show.rename(columns={
+            "ts": "시각",
+            "seed_ids_list": "시드 곡명",
+            "elapsed_sec": "지연(초)",
+        }, inplace=True)
+        show["시드 곡명"] = show["시드 곡명"].apply(seed_names)
+        st.dataframe(show.head(30), use_container_width=True, hide_index=True)
+
+        # ======================
+        # KPI 카드
+        # ======================
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("평균 다양성", f"{logs['diversity'].mean():.3f}" if logs["diversity"].notna().any() else "-")
+        c2.metric("평균 지연시간(초)", f"{logs['elapsed_sec'].mean():.3f}" if logs["elapsed_sec"].notna().any() else "-")
+        total_reco = len(items) if not items.empty else int(logs["top_k"].fillna(0).sum())
+        c3.metric("총 추천 수", f"{total_reco:,}")
+        c4.metric("최근 로그 수", f"{len(logs):,}")
+
+        # ======================
+        # 장르별 비율
+        # ======================
+        st.subheader("장르별 비율")
+        if items.empty or "genre" not in items.columns:
+            st.caption("추천 아이템 데이터가 충분하지 않습니다.")
         else:
-            # 둘 다 없으면 인덱스 기준 가짜시간
-            df["ts"] = pd.to_datetime(pd.Timestamp.now())
+            g = items["genre"].fillna("Unknown")
+            genre_share = (g.value_counts(normalize=True).sort_values(ascending=False) * 100).round(2)
+            st.bar_chart(genre_share)
 
-        df["elapsed_sec"] = pd.to_numeric(df.get("elapsed_sec"), errors="coerce")
+        # ======================
+        # 연도별 비율
+        # ======================
+        st.subheader("연도별 비율")
+        if items.empty or "year" not in items.columns:
+            st.caption("추천 아이템 데이터가 충분하지 않습니다.")
+        else:
+            y = pd.to_numeric(items["year"], errors="coerce").dropna().astype(int)
+            year_share = (y.value_counts(normalize=True).sort_index() * 100).round(2)
+            st.bar_chart(year_share)
 
-        def parse_json_maybe(x):
-            if isinstance(x, list):
-                return x
-            if isinstance(x, str):
-                try:
-                    return json.loads(x)
-                except Exception:
-                    # 파이프(|)로 합친 파일 폴백 포맷일 수 있음
-                    if "|" in x:
-                        return [t for t in x.split("|") if t]
-            return []
-
-        df["seed_track_ids"] = df.get("seed_track_ids", []).apply(parse_json_maybe) if "seed_track_ids" in df.columns else [[]]*len(df)
-        df["returned_track_ids"] = df.get("returned_track_ids", []).apply(parse_json_maybe) if "returned_track_ids" in df.columns else [[]]*len(df)
-
-        # 다양성 지표: 고유 추천 수 / 전체 추천 수
-        def calc_diversity(lst):
-            try:
-                return len(set(lst)) / max(len(lst), 1)
-            except Exception:
-                return None
-
-        df["diversity"] = df["returned_track_ids"].apply(calc_diversity)
-
-        # 보여주기
-        st.subheader("요약")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("평균 다양성", f"{pd.to_numeric(df['diversity'], errors='coerce').mean():.3f}")
-        c2.metric("평균 지연시간(초)", f"{pd.to_numeric(df['elapsed_sec'], errors='coerce').mean():.3f}")
-        c3.metric("총 추천 수", len(df))
-
+        # ======================
+        # 다양성/지연시간 추이
+        # ======================
         st.subheader("다양성 추이")
-        div_series = df.set_index("ts")["diversity"].dropna()
+        div_series = logs.set_index("ts")["diversity"].dropna()
         if not div_series.empty:
-            st.line_chart(div_series)
+            st.line_chart(div_series.to_frame("diversity"))
         else:
             st.caption("시각화할 데이터가 충분하지 않습니다.")
 
         st.subheader("지연시간 추이")
-        lat_series = df.set_index("ts")["elapsed_sec"].dropna()
+        lat_series = logs.set_index("ts")["elapsed_sec"].dropna()
         if not lat_series.empty:
-            st.line_chart(lat_series)
+            st.line_chart(lat_series.to_frame("elapsed_sec"))
         else:
             st.caption("시각화할 데이터가 충분하지 않습니다.")
 
-        st.subheader("최근 추천 로그")
-        show_cols = [c for c in ["ts", "by_field", "query", "top_k", "elapsed_sec"] if c in df.columns]
-        st.dataframe(df[show_cols].head(30), use_container_width=True)
+        
