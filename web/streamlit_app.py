@@ -95,18 +95,18 @@ def call_search(api_base: str, by: str, query: str, limit: int = 50) -> pd.DataF
     """Backend /search 호출 (API에 /search 엔드포인트가 있어야 합니다)"""
     url = f"{api_base.rstrip('/')}/search"
     payload = {"by": by, "query": query, "limit": int(limit)}
-    resp = requests.post(url, json=payload, timeout=30)
+    resp = requests.post(url, json=payload, timeout=2000)
     resp.raise_for_status()
     items = resp.json().get("items", [])
     return pd.DataFrame(items)
 
 def call_recommend(api_base: str, by: str, query: str, top_k: int, seed_max: int | None = 1) -> pd.DataFrame:
     """Backend /recommend 호출"""
-    url = f"{api_base.rstrip('/')}/recommend"
+    url = f"{api_base.rstrip('/')}/recommend_ranked"
     payload = {"by": by, "query": query, "top_k": int(top_k)}
     if seed_max is not None:
         payload["seed_max"] = int(seed_max)  # 모델 패치 시 사용
-    resp = requests.post(url, json=payload, timeout=30)
+    resp = requests.post(url, json=payload, timeout=2000)
     resp.raise_for_status()
     items = resp.json().get("items", [])
     return pd.DataFrame(items)
