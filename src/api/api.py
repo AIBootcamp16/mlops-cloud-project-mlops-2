@@ -9,6 +9,7 @@ import time
 import pickle
 import pandas as pd
 
+myTopN_Model = TopN_Model()
 app = FastAPI()
 
 # ======= 요청 스키마 =======
@@ -21,6 +22,7 @@ class RecommendRankedRequest(BaseModel):
     by: str            # "track_name" / "artist" 등
     query: str         # 검색어
     top_k: int | None = 10
+
 
 # ======= 경로 설정 =======
 BASE_DIR = Path(__file__).resolve().parents[2]  
@@ -79,7 +81,6 @@ def search(req: SearchRequest):
 def recommend(req: RecommendRankedRequest):
     try:
         t0 = time.time()
-        myTopN_Model = TopN_Model()
         TopN_result = myTopN_Model.Search(by=req.by, query=req.query, top_k=10)
         elapsed = time.time() - t0
         return {"items": TopN_result.to_dict(orient="records")}
