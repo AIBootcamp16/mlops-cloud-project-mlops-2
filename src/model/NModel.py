@@ -21,12 +21,17 @@ import mlflow
 import mlflow.pyfunc
 from mlflow.models import get_model_info
 from mlflow.artifacts import download_artifacts
-#from mlflow import artifacts
 
 mlflow_addr = os.environ.get("MLFLOW_ADDR")
 
 mlflow.set_tracking_uri(f"{mlflow_addr}")
 mlflow.set_experiment("spotipy_recommender")
+
+@dataclass
+class FinderArtifacts:
+    pipeline: object
+    id_index: pd.DataFrame
+    feature_names: List[str]
 
 class MLFLOWLogBuilder:
     def __init__(self,run_name):
@@ -64,7 +69,7 @@ class MLFLOW_Logger:
         self.log_thread = None
         self._initialized = True
     
-    def loger_start(self):
+    def logger_start(self):
         # MLflow 로깅을 위한 큐와 스레드 초기화
         if self.log_thread is None or not self.log_thread.is_alive():
             self.log_thread = threading.Thread(target=self._log_worker, daemon=True)
@@ -77,7 +82,6 @@ class MLFLOW_Logger:
             if log_data is None:  # 종료 신호
                 break
             try:
-
                 with mlflow.start_run(run_name=log_data["run_name"]):
                     mlflow.log_params(log_data["params"])
                     mlflow.log_metrics(log_data["metrics"])
@@ -88,10 +92,51 @@ class MLFLOW_Logger:
     def write_log(self,log_data):
         self.log_queue.put(log_data)
         
-    def loger_stop(self):
+    def logger_stop(self):
         if self.log_thread is None or not self.log_thread.is_alive():
             self.log_queue.put(None)
             self.log_thread.join()
+
+# 음악 검색
+class Finder:
+    def __init__(self, n_neighbors: int = 50, metric: str = "cosine"):
+        self.n_neighbors = n_neighbors
+        self.metric = metric
+        self.artifacts: Optional[FinderArtifacts] = None
+
+    @classmethod
+    def load(cls, model_dir: str) -> "Finder":
+        p = Path(model_dir)
+        pipeline_path = p / "preprocess.joblib"
+        id_index_path = p / "id_index.parquet"
+        meta_path = p / "meta.json"
+
+        # knn_path 관련 부분 제거됨
+        if not (pipeline_path.exists() and id_index_path.exists() and meta_path.exists()):
+            raise FileNotFoundError(f"Model artifacts not found in {model_dir}. Run training first.")
+
+        pipe = joblib.load(pipeline_path)
+        id_index = pd.read_parquet(id_index_path)
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+
+        rec = cls(n_neighbors=meta.get("n_neighbors", 50), metric=meta.get("metric","cosine"))
+        rec.artifacts = FinderArtifacts(
+            pipeline=pipe,
+            id_index=id_index,
+            feature_names=meta.get("feature_names", [])
+        )
+        return rec
+
+    def _lookup_indices(self, by: str, query: str, max_matches: int = 50) -> List[int]:
+        assert self.artifacts is not None, "Model not fitted."
+        idx = self.artifacts.id_index
+        by = by.lower()
+        if by not in idx.columns.str.lower():
+            raise ValueError(f"'by' must be one of {list(idx.columns)}")
+        col = idx.columns[idx.columns.str.lower() == by][0]
+        mask = idx[col].astype(str).str.contains(str(query), case=False, na=False)
+        matches = np.where(mask.values)[0].tolist()
+        return matches[:max_matches]
 
 class RecommenderWrapper(mlflow.pyfunc.PythonModel):
     # FAISSRecommender save 함수
@@ -123,10 +168,10 @@ class FAISSRecommender():
         quantizer = faiss.IndexFlatL2(d)
         self.index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
         self.mlflow_logger = MLFLOW_Logger()
-        self.mlflow_logger.loger_start()
+        self.mlflow_logger.logger_start()
         
     def release(self):
-        self.mlflow_logger.loger_stop()
+        self.mlflow_logger.logger_stop()
 
     def fit(self):
         start_time = time.time()
@@ -229,31 +274,55 @@ class FAISSRecommender():
     @classmethod
     def load(cls, path: str):
         """저장된 FAISS 인덱스와 매핑을 불러와 Recommender 객체 생성"""
-        # 1. 매핑 불러오기
-        with open(path, "rb") as f:
-            data = pickle.load(f)
+        p = Path(path)
+        if p.is_dir():
+            mapping_path = p / "mappings.pkl"
+            index_path   = p / "faiss.index"
+        else:
+            mapping_path = p
+            index_path   = p.with_name("faiss.index")
 
+        if not mapping_path.exists():
+            raise FileNotFoundError(f"Mapping file not found: {mapping_path}")
+        if not index_path.exists():
+            raise FileNotFoundError(f"FAISS index not found: {index_path}")
+        
+        # 1. 매핑 불러오기
+        with open(mapping_path, "rb") as f:
+            data = pickle.load(f)
+        
         # 2. 객체 생성
         obj = cls(data["df"], data["features"])
         obj.X = data["X"]
-
+        
         # 3. FAISS 인덱스 불러오기
-        obj.index = faiss.read_index(f"{path}/faiss.index")
+        # obj.index = faiss.read_index(f"{path}/faiss.index")
+        obj.index = faiss.read_index(str(index_path))
 
         # 4. 매핑 복원
         obj.track_to_idx = data["track_to_idx"]
         obj.artist_to_idx = data["artist_to_idx"]
         obj.id_to_idx = data["id_to_idx"]
-
-        print(f"Model loaded from {path}")
+        
+        print(f"Model loaded from {mapping_path.parent.resolve()}")
         return obj
     
     # 모델 불러오기
     @classmethod
     def MLFLOWload(cls):
+        os.environ["MLFLOW_ADDR"] = "http://114.203.195.166:5000"
+        os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://114.203.195.166:9000"
+        os.environ["AWS_ACCESS_KEY_ID"] = "admin"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "admin1234"
+
+        mlflow_addr = os.environ.get("MLFLOW_ADDR")
+        
+        mlflow.set_tracking_uri(f"{mlflow_addr}")
+        mlflow.set_experiment("spotipy_recommender")
+
         model_versions = mlflow.search_model_versions(filter_string = f"name='Recommender_FAISS'")
         FAISS_version = max(v.version for v in model_versions)
-
+        
         # 1. artifacts를 로컬 경로로 다운로드
         local_artifacts_path = download_artifacts(f"models:/Recommender_FAISS/{FAISS_version}")
 
@@ -423,6 +492,17 @@ class LGBMRecommender:
     @classmethod
     def MLFLOW_load(cls) -> "LGBMRecommender":
         model_name = 'spotipy_LGBM'
+
+        os.environ["MLFLOW_ADDR"] = "http://114.203.195.166:5000"
+        os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://114.203.195.166:9000"
+        os.environ["AWS_ACCESS_KEY_ID"] = "admin"
+        os.environ["AWS_SECRET_ACCESS_KEY"] = "admin1234"
+
+        mlflow_addr = os.environ.get("MLFLOW_ADDR")
+        
+        mlflow.set_tracking_uri(f"{mlflow_addr}")
+        mlflow.set_experiment("spotipy_recommender")
+        
         # 모든 버전 검색
         all_versions = mlflow.search_model_versions(filter_string =f"name='{model_name}'")
 
