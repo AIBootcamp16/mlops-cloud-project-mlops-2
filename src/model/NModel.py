@@ -167,11 +167,11 @@ class FAISSRecommender():
         # 3. IVF 인덱스 생성
         quantizer = faiss.IndexFlatL2(d)
         self.index = faiss.IndexIVFFlat(quantizer, d, nlist, faiss.METRIC_L2)
-        self.mlflow_logger = MLFLOW_Logger()
-        self.mlflow_logger.logger_start()
+        #self.mlflow_logger = MLFLOW_Logger()
+        #self.mlflow_logger.logger_start()
         
-    def release(self):
-        self.mlflow_logger.logger_stop()
+    #def release(self):
+    #    self.mlflow_logger.logger_stop()
 
     def fit(self):
         start_time = time.time()
@@ -221,6 +221,11 @@ class FAISSRecommender():
         query_vec = self.X[idx].reshape(1, -1)
         distances, indices = self.index.search(query_vec, top_k)
 
+        # 2. 사용할 피처 선택 (벡터화)
+        features = [
+            'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',
+            'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms'
+        ]
         # 결과 DataFrame 생성
         results = []
         for i, r_idx in enumerate(indices[0]):
@@ -230,19 +235,33 @@ class FAISSRecommender():
                 "track_name": self.df.loc[r_idx, "track_name"],
                 "artist_name": self.df.loc[r_idx, "artist_name"],
                 "distance": float(distances[0][i]),
+                #추가 아이템
+                "danceability": self.df.loc[r_idx, "danceability"],
+                "energy": self.df.loc[r_idx, "energy"],
+                "key": self.df.loc[r_idx, "key"],
+                "loudness": self.df.loc[r_idx, "loudness"],
+                "mode": self.df.loc[r_idx, "mode"],
+                "speechiness": self.df.loc[r_idx, "speechiness"],
+                "acousticness": self.df.loc[r_idx, "acousticness"],
+                "instrumentalness": self.df.loc[r_idx, "instrumentalness"],
+                "liveness": self.df.loc[r_idx, "liveness"],
+                "valence": self.df.loc[r_idx, "valence"],
+                "tempo": self.df.loc[r_idx, "tempo"],
+                "duration_ms": self.df.loc[r_idx, "duration_ms"],
+                
             })
 
         result_df = pd.DataFrame(results)
         # MLflow 로깅
-        log_builder = MLFLOWLogBuilder("faiss_recommender")
-        log_builder.add_param("query_by", by)
-        log_builder.add_param("query_value", query)
-        log_builder.add_param("top_k", top_k)
-        log_builder.add_metric("returned", len(result_df))
-        log_builder.add_metric("recommender_sec", time.time() - start_time)
-        log_builder.add_metric("avg_distance", float(result_df["distance"].mean()))
-        mlflow_log = log_builder.build()
-        self.mlflow_logger.write_log(mlflow_log)
+        #log_builder = MLFLOWLogBuilder("faiss_recommender")
+        #log_builder.add_param("query_by", by)
+        #log_builder.add_param("query_value", query)
+        #log_builder.add_param("top_k", top_k)
+        #log_builder.add_metric("returned", len(result_df))
+        #log_builder.add_metric("recommender_sec", time.time() - start_time)
+        #log_builder.add_metric("avg_distance", float(result_df["distance"].mean()))
+        #mlflow_log = log_builder.build()
+        #self.mlflow_logger.write_log(mlflow_log)
         return result_df
     
     # 모델 저장
@@ -369,7 +388,7 @@ class LGBMRecommender:
         self.features = features
 
     def fit(self, df: pd.DataFrame, features, target: str):
-        start_time=time.time();
+        start_time=time.time()
         self.features = features
         X = df[features]
         y = df[target]
