@@ -1,0 +1,14 @@
+# -------------------------------------------------------------------------
+# MLOps 환경 안정성을 위한 줄바꿈(Line Ending) 강제 설정
+
+# 1. 데이터 파일 (.csv): Git이 줄바꿈 문자에 절대 손대지 않도록 binary로 취급
+#    (데이터 무결성 유지, LF <-> CRLF 변환 방지)
+*.csv binary
+# 2. 쉘 스크립트 (.sh): Docker 환경에서 실행 오류를 막기 위해 LF (Linux/Unix)로 통일
+#    (Windows에서 작업해도 컨테이너에서는 오류 없이 실행되도록 보장)
+*.sh text eol=lf
+# 3. 그 외 텍스트 파일: OS 환경에 맞게 자동으로 처리하도록 위임
+#    (Python, YAML, Markdown 등)
+* text=auto
+dataset/processed/spotify_data_clean.csv filter=lfs diff=lfs merge=lfs -text
+dataset/raw/spotify_data.csv filter=lfs diff=lfs merge=lfs -text

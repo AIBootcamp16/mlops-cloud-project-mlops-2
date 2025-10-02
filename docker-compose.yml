@@ -1,14 +1,39 @@
 version: "3.9"
 
 services:
-  mlops-dev:
+  # 1. MLOps 개발 및 Airflow 통합 환경
+  # Airflow 웹서버, 스케줄러 구동 및 MLOps 코드 실행 환경으로 사용
+  mlops-airflow:
+    # 현재 디렉토리의 Dockerfile을 사용하여 이미지 빌드
     build: .
-    container_name: train_test
+    # 컨테이너 식별 이름
+    container_name: mlops_train_test
+    
+    # ✅ .env 파일을 통해 MLFLOW_ADDR 및 AWS 인증 정보 주입
     env_file:
       - .env
+      
+    # 포트 설정: Airflow Webserver (호스트 8080 -> 컨테이너 8080)
+    ports:
+      - "8080:8080"
+      
+    # 볼륨 설정: 경로 호환성 및 데이터 영속성 확보
     volumes:
-      - ./mlops-cloud-project-mlops-2:/app/mlops  # 로컬 코드 공유
-    working_dir: /app/mlops/src
-    tty: true
-    command: bash
+      # 1. 프로젝트 코드 마운트 (경로 오류 방지 전략 BASE_DIR 적용, 팀원 설정 통합)
+      # ${BASE_DIR}은 .env 파일에서 설정한 프로젝트의 절대 경로를 참조합니다.
+      - ${BASE_DIR}:/app/mlops 
+      
+      # 2. Airflow DAGs 마운트: 로컬 dags 폴더를 컨테이너의 Airflow DAGs 경로로 연결
+      - ${BASE_DIR}/dags:/usr/local/airflow/dags
+      
+      # 3. Airflow DB/Config 영속성 볼륨 (Dockerfile에서 초기화된 DB 파일 저장)
+      - airflow_data:/usr/local/airflow
+      
+    # 컨테이너 내부의 작업 디렉토리를 로컬 프로젝트 루트(/app/mlops)로 설정
+    working_dir: /app/mlops 
     
+    # 컨테이너 시작 시 Dockerfile의 CMD를 실행하여 Airflow (Webserver + Scheduler) 구동
+
+# 영속적인 Airflow DB 및 설정 저장을 위한 외부 볼륨 정의
+volumes:
+  airflow_data:
