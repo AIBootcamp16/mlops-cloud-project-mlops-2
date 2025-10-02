@@ -1,0 +1,10 @@
+FROM python:3.11-slim
+
+WORKDIR /app/mlops/src
+
+# 필요한 라이브러리 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt mlflow
+
+# ML 코드와 환경 공유
+COPY . /app/mlops

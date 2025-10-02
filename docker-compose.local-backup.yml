@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  # ===================================================
+  # 1) Airflow 서비스
+  # ===================================================
+  mlops-airflow:
+    image: itgitg/mlops-dev:latest
+    container_name: mlops_airflow
+    env_file:
+      - .env
+    volumes:
+      - ${BASE_DIR}:/app/mlops   # 로컬 프로젝트 전체 마운트
+      - airflow_data:/opt/airflow # Airflow DB 영속화
+    working_dir: /app/mlops
+    tty: true
+    ports:
+      - "8080:8080"  # Airflow 웹 UI 접근 포트
+    command: >
+      bash -c "
+        airflow db check || airflow db init &&
+        airflow webserver -p 8080 &
+        exec airflow scheduler
+      "
+
+  # ===================================================
+  # 2) Python main.py 실행용 서비스
+  # ===================================================
+  mlops-runner:
+    image: itgitg/mlops-dev:latest
+    container_name: mlops_runner
+    env_file:
+      - .env
+    volumes:
+      - ${BASE_DIR}:/app/mlops
+    working_dir: /app/mlops
+    tty: true
+    environment:
+      PYTHONPATH: /app/mlops  # main.py import 문제 방지
+    command: >
+      bash -c "
+        python src/main.py
+      "
+
+# ===================================================
+# Airflow DB 및 설정 영속용 볼륨
+# ===================================================
+volumes:
+  airflow_data:

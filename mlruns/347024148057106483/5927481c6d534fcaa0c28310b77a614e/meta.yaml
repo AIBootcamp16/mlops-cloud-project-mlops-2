@@ -1,0 +1,14 @@
+artifact_uri: file:///app/mlops/mlruns/347024148057106483/5927481c6d534fcaa0c28310b77a614e/artifacts
+end_time: 1759373566847
+entry_point_name: ''
+experiment_id: '347024148057106483'
+lifecycle_stage: active
+run_id: 5927481c6d534fcaa0c28310b77a614e
+run_name: Simple_NN_Training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1759373527653
+status: 3
+tags: []
+user_id: root

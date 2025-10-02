@@ -1,0 +1,14 @@
+FROM apache/airflow:2.7.1-python3.11
+
+# Python 패키지는 airflow 유저로 설치
+USER airflow
+RUN pip install --no-cache-dir \
+        pandas \
+        numpy \
+        scikit-learn \
+        sqlalchemy
+
+WORKDIR /usr/local/airflow
+
+COPY dags ./dags
+

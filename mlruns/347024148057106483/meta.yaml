@@ -1,0 +1,6 @@
+artifact_location: file:///app/mlops/mlruns/347024148057106483
+creation_time: 1759373520140
+experiment_id: '347024148057106483'
+last_update_time: 1759373520140
+lifecycle_stage: active
+name: Simple_NN_Spotify_Prediction

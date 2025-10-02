@@ -1,11 +1,3 @@
-# ---------------------
-# 실행 방법
-# ---------------------
-# # api 서버 (프로젝트 root에서 실행)
-# python -m uvicorn src.api.api:app --reload --port 8000
-# # UI (web 디렉토리에서 실행)
-# python -m streamlit run .\streamlit_app.py
-
 from __future__ import annotations
 
 import os
@@ -134,6 +126,7 @@ with tab1:
             try:
                 with tiny_loading("검색 중..."):
                     t0 = time.time()
+                    # API에서 image_url을 포함해서 반환한다고 가정
                     df_search = call_search(API_BASE, query_by, query_text, SEARCH_LIMIT)
                     elapsed = time.time() - t0
                 if df_search.empty:
@@ -156,16 +149,17 @@ with tab1:
     if isinstance(df_search, pd.DataFrame) and not df_search.empty:
         st.subheader("검색 결과")
 
-        display_cols = [c for c in ["track_name", "artist_name"] if c in df_search.columns]
+        # image_url 컬럼을 포함하여 표시
+        display_cols = [c for c in ["track_name", "artist_name", "image_url"] if c in df_search.columns]
         if not display_cols:
             display_cols = [c for c in df_search.columns if c != "track_id"]
-
+        
         # 원본 인덱스를 유지하여 선택 행에서 track_id를 역추적
-        temp = df_search[display_cols].copy()
+        temp = df_search[display_cols + ["track_id"]].copy()
         temp.insert(0, "선택", False)
 
         edited = st.data_editor(
-            temp,
+            temp.drop(columns=["track_id"]), # track_id는 UI에 숨김
             use_container_width=True,
             hide_index=True,
             num_rows="fixed",
@@ -176,7 +170,16 @@ with tab1:
                     help="추천을 생성할 곡을 한 곡만 선택하세요",
                     default=False,
                     required=False,
-                )
+                ),
+                # === [수정: 검색 결과에도 이미지 컬럼 적용] ===
+                "image_url": st.column_config.ImageColumn(
+                    "커버",
+                    width="small",
+                    help="Spotify 앨범 커버 이미지"
+                ),
+                "track_name": "노래 제목",
+                "artist_name": "가수 이름",
+                # === [수정 끝] ===
             },
             key="search_table",
         )
@@ -186,8 +189,10 @@ with tab1:
         if len(selected_rows) > 1:
             st.warning("한 곡만 선택해 주세요.")
         elif len(selected_rows) == 1:
-            if "track_id" in df_search.columns:
-                selected_seed_id = df_search.loc[selected_rows[0], "track_id"]
+            # track_id는 temp DataFrame에서 원본 인덱스를 이용해 가져옵니다.
+            selected_track_id = temp.loc[edited.index[selected_rows[0]], "track_id"]
+            if "track_id" in temp.columns:
+                selected_seed_id = selected_track_id
                 st.session_state["selected_seed_id"] = selected_seed_id
             else:
                 st.warning("백엔드 응답에 track_id가 없어 시드 선택을 완료할 수 없습니다.")
@@ -213,9 +218,32 @@ with tab1:
                     st.info("추천 결과가 없습니다.")
                 else:
                     st.success(f"총 {len(df_rec)}건의 추천을 생성했습니다. ({elapsed:.3f}초)")
-                    prefer = [c for c in ["rank", "track_name", "artist_name", "distance"] if c in df_rec.columns]
+                    
+                    # === [수정: st.data_editor를 사용하여 이미지 렌더링] ===
+                    # 추천 결과를 표시할 컬럼 순서 (image_url 포함)
+                    prefer = ["rank", "image_url", "track_name", "artist_name", "distance"]
                     other = [c for c in df_rec.columns if c not in prefer and c != "track_id"]
-                    st.dataframe(df_rec[prefer + other], use_container_width=True, hide_index=True)
+                    
+                    st.data_editor(
+                        df_rec[[c for c in (prefer + other) if c in df_rec.columns]], 
+                        use_container_width=True, 
+                        hide_index=True,
+                        disabled=True, # 추천 결과는 수정 불가
+                        column_config={
+                            "rank": "순위",
+                            "track_name": "노래 제목",
+                            "artist_name": "가수 이름",
+                            "distance": "유사도(거리)",
+                            "image_url": st.column_config.ImageColumn(
+                                "커버 이미지",
+                                width="small",
+                                help="Spotify 앨범 커버 이미지"
+                            ),
+                            "y_pred": "재순위 점수",
+                        }
+                    )
+                    # === [수정 끝] ===
+                    
             except requests.exceptions.ConnectionError:
                 st.error(f"API에 연결할 수 없습니다: {API_BASE}")
             except requests.exceptions.HTTPError as e:
@@ -247,7 +275,7 @@ with tab2:
             log_ids = tuple(logs["id"].tolist())
             items = pd.read_sql(
                 f"""
-                SELECT ri.log_id, ri.`rank`, ri.track_id, ri.distance,
+                SELECT ri.log_id, ri.rank, ri.track_id, ri.distance,
                        m.track_name, m.artist_name, m.genre, m.year, m.popularity
                 FROM recommend_items ri
                 JOIN spotify_music m ON ri.track_id COLLATE utf8mb4_unicode_ci = m.track_id COLLATE utf8mb4_unicode_ci
@@ -360,5 +388,3 @@ with tab2:
             st.line_chart(lat_series.to_frame("elapsed_sec"))
         else:
             st.caption("시각화할 데이터가 충분하지 않습니다.")
-
-        

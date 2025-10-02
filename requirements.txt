@@ -1,42 +1,43 @@
-----------------------------------------------------------------------
-MLOps Cloud Project Python Dependencies (requirements.txt)
-Airflow는 Dockerfile에서 별도 설치됩니다.
-----------------------------------------------------------------------
-1. 환경/설정
+# ----------------------------------------------------------------------
+# MLOps Cloud Project Python Dependencies
+# (Airflow는 Dockerfile에서 별도 설치됩니다.)
+# ----------------------------------------------------------------------
+
+# 1. 환경/설정
 python-dotenv
 
-2. 데이터 처리 및 ML 기본
+# 2. 데이터 처리 및 ML 기본
 pandas
 numpy
 scikit-learn
 joblib
 
-3. 모델링 및 프레임워크
+# 3. 모델링 및 프레임워크
 torch
 lightgbm
 faiss-cpu
 
-4. 서버/API (모델 서빙 또는 로컬 테스트용)
+# 4. 서버/API (모델 서빙 또는 로컬 테스트용)
 fastapi
 uvicorn
 pydantic
 
-5. MLOps Tracking 및 아티팩트 관리
+# 5. MLOps Tracking 및 아티팩트 관리
 mlflow
 boto3
-requests # API 호출 및 통신용
+requests
 
-6. 데이터베이스 및 저장소 연결
+# 6. 데이터베이스 및 저장소 연결
 SQLAlchemy
-pymysql           # MySQL/MariaDB 연결용
-pyarrow           # Parquet 데이터 처리 가속
-fastparquet       # Parquet 데이터 처리 가속
+pymysql
+pyarrow
+fastparquet
 
-----------------------------------------------------------------------
-💡 UI 라이브러리 설치 가이드
-----------------------------------------------------------------------
-streamlit은 Airflow/ML 파이프라인 컨테이너(mlops-airflow)에 설치하지 않습니다.
-(이유: 포트 충돌 방지 및 이미지 크기 최적화)
-- UI 담당자는 별도의 Docker Compose 서비스(예: ui-dashboard)와
-전용 requirements.txt를 만들고 그곳에 streamlit을 설치해야 합니다.
-streamlit
+# ----------------------------------------------------------------------
+# 💡 UI 라이브러리 설치 가이드
+# ----------------------------------------------------------------------
+# streamlit은 Airflow/ML 파이프라인 컨테이너(mlops-airflow)에 설치하지 않습니다.
+# (이유: 포트 충돌 방지 및 이미지 크기 최적화)
+# - UI 담당자는 별도의 Docker Compose 서비스(예: ui-dashboard)와
+#   전용 requirements.txt를 만들고 그곳에 streamlit을 설치해야 합니다.
+
