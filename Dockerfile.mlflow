@@ -1,10 +1,15 @@
 FROM python:3.11-slim
 
+# LightGBM/FAISS에서 사용하는 OpenMP 라이브러리 설치
+RUN apt-get update && \
+    apt-get install -y libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
+    
 WORKDIR /app/mlops/src
 
 # 필요한 라이브러리 설치
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt mlflow
+COPY requirements_api.txt .
+RUN pip install --no-cache-dir -r requirements_api.txt mlflow
 
 # ML 코드와 환경 공유
 COPY . /app/mlops

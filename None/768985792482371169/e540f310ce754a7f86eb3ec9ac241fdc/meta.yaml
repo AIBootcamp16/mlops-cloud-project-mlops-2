@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/rapro/projects/MLOps/mlops-cloud-project-mlops-2/None/768985792482371169/e540f310ce754a7f86eb3ec9ac241fdc/artifacts
+end_time: 1759607779301
+entry_point_name: ''
+experiment_id: '768985792482371169'
+lifecycle_stage: active
+run_id: e540f310ce754a7f86eb3ec9ac241fdc
+run_name: LGBM_fit
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1759607772149
+status: 3
+tags: []
+user_id: rapro

@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/rapro/projects/MLOps/mlops-cloud-project-mlops-2/None/768985792482371169/69cb03dbe1ab426d9f1afba8fdb78fcb/artifacts
+end_time: 1759660162737
+entry_point_name: ''
+experiment_id: '768985792482371169'
+lifecycle_stage: active
+run_id: 69cb03dbe1ab426d9f1afba8fdb78fcb
+run_name: faiss_fit
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1759660162612
+status: 3
+tags: []
+user_id: rapro

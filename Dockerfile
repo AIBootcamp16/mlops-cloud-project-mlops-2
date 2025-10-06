@@ -28,9 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # -------------------------------------------------------------------------
 
 # requirements.txt 파일을 컨테이너의 임시 경로에 복사
-COPY requirements.txt /tmp/requirements.txt
+# ❗ 수정: 로컬 파일 이름만 'requirements_api.txt'로 변경
+COPY requirements_api.txt /tmp/requirements.txt 
 
 # pip 의존성 설치 (ML Dependencies)
+# 컨테이너 내부는 그대로 '/tmp/requirements.txt'를 사용
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 

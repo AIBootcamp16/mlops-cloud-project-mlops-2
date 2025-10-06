@@ -1,0 +1,31 @@
+# 파이썬 3.10 버전의 경량 이미지를 사용합니다.
+FROM python:3.10-slim
+
+# ❗ LightGBM에 필요한 시스템 종속성 설치 (UI 컨테이너에도 필요할 수 있음) ❗
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+    
+# 작업 디렉토리를 설정합니다.
+WORKDIR /app
+
+# (선택) 시스템 라이브러리 설치 (필요한 경우)
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     # 필요한 시스템 라이브러리 추가 \
+#     && rm -rf /var/lib/apt/lists/*
+
+# 필요한 파이썬 패키지를 먼저 설치하여 Docker 캐시를 활용합니다.
+# requirements.txt 파일에 streamlit, pandas, requests 등이 포함되어 있어야 합니다.
+COPY requirements_streamlit.txt .
+RUN pip install --no-cache-dir -r requirements_streamlit.txt
+
+# 앱 코드 전체를 컨테이너로 복사합니다.
+# (streamlit.py 파일 및 API 호출에 필요한 기타 파일 포함)
+COPY . .
+
+# Streamlit 앱이 실행될 기본 포트를 노출합니다.
+EXPOSE 8501
+
+# Streamlit 앱 실행 명령어 정의
+# Streamlit 기본 포트(8501)로 실행합니다.
+CMD ["streamlit", "run", "web/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]

@@ -1,0 +1,14 @@
+artifact_uri: file:///app/mlops/mlruns/347024148057106483/033c1c2a138043bf87c5de7ae323c4e5/artifacts
+end_time: 1759579187427
+entry_point_name: ''
+experiment_id: '347024148057106483'
+lifecycle_stage: active
+run_id: 033c1c2a138043bf87c5de7ae323c4e5
+run_name: Simple_NN_Training
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1759579167974
+status: 3
+tags: []
+user_id: rapro
