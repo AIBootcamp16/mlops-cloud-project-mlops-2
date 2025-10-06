@@ -9,5 +9,11 @@
 # 3. 그 외 텍스트 파일: OS 환경에 맞게 자동으로 처리하도록 위임
 #    (Python, YAML, Markdown 등)
 * text=auto
-dataset/processed/spotify_data_clean.csv filter=lfs diff=lfs merge=lfs -text
-dataset/raw/spotify_data.csv filter=lfs diff=lfs merge=lfs -text
+
+#Git LFS 추적 설정 제거 (주석처리)
+#dataset/processed/spotify_data_clean.csv filter=lfs diff=lfs merge=lfs -text
+#dataset/raw/spotify_data.csv filter=lfs diff=lfs merge=lfs -text
+
+  
+ 
+ 
