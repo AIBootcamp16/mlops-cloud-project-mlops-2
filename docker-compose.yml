@@ -1,17 +1,6 @@
 version: "3.9"
 
 services:
-  # mlops-dev:
-  #   build: .
-  #   container_name: train_test
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./mlops-cloud-project-mlops-2:/app/mlops  # 로컬 코드 공유
-  #   working_dir: /app/mlops/src
-  #   tty: true
-  #   command: bash
-
   airflow:
     build: .
     container_name: airflow
@@ -26,13 +15,4 @@ services:
     environment:
       - AIRFLOW_HOME=/usr/local/airflow
       - EC2_HOST=${EC2_HOST}
-      - EC2_SSH_KEY_PATH=${EC2_SSH_KEY_PATH}
     working_dir: /usr/local/airflow
-    # command: bash -c "airflow db init && airflow webserver -p 8080 & airflow scheduler"    
-    # command: >
-    #   bash -c "
-    #   airflow db init &&
-    #   airflow users create --username airflow --password airflow --firstname air --lastname flow --role Admin --email airflow@example.com &&
-    #   airflow webserver -p 8080 &
-    #   airflow scheduler
-    #   "
