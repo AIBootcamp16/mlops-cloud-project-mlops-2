@@ -13,7 +13,6 @@
 #Git LFS 추적 설정 제거 (주석처리)
 #dataset/processed/spotify_data_clean.csv filter=lfs diff=lfs merge=lfs -text
 #dataset/raw/spotify_data.csv filter=lfs diff=lfs merge=lfs -text
-
   
  
- 
+*.csv !text !filter !merge !diff

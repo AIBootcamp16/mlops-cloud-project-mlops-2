@@ -1,25 +1,103 @@
+# ============================================================
+# 🧠 MLOps Music Recommendation System — Stable Release
+# ------------------------------------------------------------
+# 구성 요소:
+#   🎵 music_recommender_api  : FastAPI 백엔드 (추천 서버)
+#   🖥️ music_recommender_ui   : Streamlit 프론트엔드
+#   🧩 mlops_airflow_web/scheduler : Airflow 관리 UI + 스케줄러
+#   ⚙️ mlops_runner           : MLflow / 학습 파이프라인 실행기
+# ------------------------------------------------------------
+# 모든 컨테이너는 동일한 네트워크(mlops_network)를 공유합니다.
+# ============================================================
+
 version: "3.9"
 
 services:
-  mlops_airflow:
+  # ----------------------------------------------------------
+  # 🎵 FastAPI — 음악 추천 API 서버
+  # ----------------------------------------------------------
+  music_recommender_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: music_recommender_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./models:/app/models
+      - ./dataset/processed:/app/dataset/processed
+    networks:
+      - mlops_network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # 🖥️ Streamlit — UI 프론트엔드
+  # ----------------------------------------------------------
+  music_recommender_ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: music_recommender_ui
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    depends_on:
+      - music_recommender_api
+    volumes:
+      - ./src/web:/app/web
+    networks:
+      - mlops_network
+    restart: always
+
+  # ----------------------------------------------------------
+  # 🧱 Airflow — 웹 UI + 스케줄러
+  # ----------------------------------------------------------
+  mlops_airflow_web:
     build:
       context: .
       dockerfile: Dockerfile.airflow
-    container_name: mlops_airflow
+    container_name: mlops_airflow_web
+    command: webserver
     ports:
-      - "8080:8080" # Airflow 웹 UI
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:////usr/local/airflow/airflow.db
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
     volumes:
       - ./dags:/usr/local/airflow/dags
-      - ./tmp:/tmp
-    environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    command: >
-      bash -c "
-      airflow db init &&
-      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin123 &&
-      airflow webserver & airflow scheduler
-      "
+      - ./logs:/usr/local/airflow/logs
+    networks:
+      - mlops_network
+    restart: always
 
+  mlops_airflow_scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: mlops_airflow_scheduler
+    command: scheduler
+    depends_on:
+      - mlops_airflow_web
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./logs:/usr/local/airflow/logs
+    networks:
+      - mlops_network
+    restart: always
+
+  # ----------------------------------------------------------
+  # ⚙️ Runner — MLflow / 학습 파이프라인 (데이터 재생성 없음)
+  # ----------------------------------------------------------
   mlops_runner:
     build:
       context: .
@@ -28,66 +106,20 @@ services:
     env_file:
       - .env
     volumes:
-       - .:/app/mlops
-    working_dir: /app/mlops/src
+      - ./src:/app/src
+      - ./models:/app/models
+      - ./dataset:/app/dataset
+    networks:
+      - mlops_network
     tty: true
-    command: bash
+    restart: on-failure
+    # ❌ 자동 데이터 재생성 제거 (build_dataset.py 실행 없음)
+    # 필요시 수동 실행:
+    # docker exec -it mlops_runner python src/data/build_dataset.py
 
-  # ----------------------------------------------------
-  # [새로 추가된 서비스 1: FastAPI 백엔드 API]
-  # ----------------------------------------------------
-  api_service:
-    build: 
-      context: .
-      # 1단계에서 생성한 FastAPI용 Dockerfile을 지정합니다.
-      dockerfile: Dockerfile.api
-    container_name: music_recommender_api
-    ports:
-      # 로컬 포트 8000과 컨테이너 포트 8000 연결
-      - "8000:8000"
-    volumes:
-      # 모델 및 데이터 접근을 위한 볼륨 마운트가 필요할 수 있습니다.
-      # (사용자님의 프로젝트 구조에 맞게 수정해주세요)
-      - .:/app/mlops  # 로컬 프로젝트 루트(.)를 컨테이너 /app/mlops에 마운트
-      # - ./dataset/processed:/app/dataset/processed  <-- datasets 폴더는 /app/mlops/dataset에 포함되므로 제거 가능
-    env_file:
-      - .env
-    environment:
-      # Streamlit이 호출할 API 주소를 내부 도커 네트워크 이름으로 설정
-      API_BASE: http://api_service:8000 
-    command: >
-      uvicorn src.api.api:app --host 0.0.0.0 --port 8000
-    # API가 준비되었는지 확인하는 헬스 체크 설정 (Streamlit 시작 전 대기용)
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
-
-  # ----------------------------------------------------
-  # [새로 추가된 서비스 2: Streamlit 프론트엔드 UI]
-  # ----------------------------------------------------
-  streamlit_ui:
-    build:
-      context: .
-      # Streamlit용 Dockerfile을 지정합니다.
-      dockerfile: Dockerfile.streamlit 
-    container_name: music_recommender_ui
-    ports:
-      # 로컬 포트 8501과 Streamlit 기본 포트 연결
-      - "8501:8501"
-    volumes:
-      # Streamlit 앱 실행에 필요한 코드 폴더를 마운트합니다.
-      - .:/app
-      # 💡 secrets.toml 마운트 💡
-      - ./.streamlit:/app/.streamlit
-    env_file:
-      - .env
-    environment:
-      # Streamlit 앱이 내부 네트워크의 API를 호출하도록 주소 설정
-      API_BASE: http://api_service:8000 
-    # API 서비스가 정상적으로 실행된 후에 Streamlit을 시작하도록 설정
-    #depends_on:
-    #  api_service:
-    #    condition: service_healthy
+# ------------------------------------------------------------
+# 🌐 공통 네트워크
+# ------------------------------------------------------------
+networks:
+  mlops_network:
+    driver: bridge

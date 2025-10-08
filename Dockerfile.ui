@@ -1,0 +1,22 @@
+# =======================================================
+# 🎨 Streamlit 프론트엔드 (UI 서비스)
+# =======================================================
+
+FROM python:3.10-slim
+
+# 작업 디렉토리 설정
+WORKDIR /app
+
+# 1️⃣ 필요한 패키지 설치
+COPY requirements_ui.txt .
+RUN pip install --no-cache-dir -r requirements_ui.txt
+
+# 2️⃣ Streamlit 앱 복사
+COPY web ./web
+COPY .env ./.env
+
+# 3️⃣ Streamlit 포트
+EXPOSE 8501
+
+# 4️⃣ 실행 명령
+CMD ["streamlit", "run", "web/streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501"]
