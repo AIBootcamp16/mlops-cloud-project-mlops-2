@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 의존성 파일 설치 (docker 캐시 아끼려면 코드 복사 전에 의존성 먼저 설치)
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    pip cache purge
 		
 # apache 설치 - airflow 2.7.2 (공식 constraints 이용)
 RUN pip install --no-cache-dir \
