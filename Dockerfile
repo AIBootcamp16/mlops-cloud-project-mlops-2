@@ -19,8 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libc-dev vi
 # RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
 #     pip cache purge
 # 빌드 속도 이슈로 캐시 사용... 
-# RUN pip install --upgrade pip && \
-#     pip install --cache-dir=/root/.cache/pip -r /tmp/requirements.txt
 RUN pip install --upgrade pip
 		
 # ===== Apache Airflow 설치 (constraints 사용) =====
