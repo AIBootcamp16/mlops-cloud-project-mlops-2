@@ -48,8 +48,8 @@ Spotify API를 활용하여 **검색 / 메타데이터 / 오디오 특성**을 �
 ## 📁 프로젝트 구조
 mlops-cloud-project-mlops-2/
 ├─ dataset/
-│ ├─ raw/spotify_data.csv # Spotify 원본 데이터 (Git 업로드 제외)
-│ └─ processed/spotify_data_clean.csv # 전처리 데이터 (로컬 유지)
+│ ├─ raw/ # Spotify 원본 데이터 (Git 업로드 제외)
+│ └─ processed/ # 전처리 데이터 (로컬 유지)
 ├─ models/ # 학습된 모델 아티팩트
 ├─ src/
 │ ├─ main.py # FastAPI 서버 엔트리포인트
@@ -65,11 +65,8 @@ mlops-cloud-project-mlops-2/
 ├─ Dockerfile.mlflow # MLflow 컨테이너
 ├─ docker-compose.yml # 전체 서비스 통합 구성
 ├─ .env / .env.safe / .env.template # 환경 설정 파일
-├─ requirements_api.txt / requirements_ui.txt # 서비스별 의존성 파일
+├─ requirements_api.txt / requirements_ui.txt
 └─ README.md
-
-markdown
-코드 복사
 
 > 💡 Airflow는 `Dockerfile.airflow` 내부에서 패키지를 직접 설치합니다.
 
