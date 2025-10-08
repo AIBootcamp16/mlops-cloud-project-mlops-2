@@ -1,41 +1,47 @@
 # ============================================================
-# 🧪 CI Pipeline for MLOps Music Recommender
+# 🚀 CI/CD Pipeline for gogoAiHunters MLOps Project
 # ------------------------------------------------------------
 # 트리거:
-#   - 수동 실행 (Actions 탭의 “Run workflow” 버튼)
-# 목적:
-#   - FastAPI (API) / Streamlit (UI) 빌드 검증
-#   - Spotify secrets 기반 환경 설정 테스트
-#   - 배포 전 코드 안정성 확보
+#   - main 브랜치 푸시
+#   - 태그(v*) 푸시
+# 주요 기능:
+#   - FastAPI / Streamlit 빌드 및 헬스체크
+#   - Spotify secrets 기반 환경 테스트
+#   - 빌드 안정성 검증 (배포 전)
 # ============================================================
 
-name: CI Pipeline (API & UI)
+name: CI/CD Pipeline (Auto Validation)
 
 on:
-  workflow_dispatch: # ✅ 수동 실행 전용
+  push:
+    branches:
+      - main
+  push:
+    tags:
+      - "v*"
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_API: ${{ github.repository }}-api
-  IMAGE_UI: ${{ github.repository }}-ui
+  ORG: gogoaihunter
+  IMAGE_API: mlops-cloud-project-mlops-2-api
+  IMAGE_UI: mlops-cloud-project-mlops-2-ui
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   # ============================================================
-  # 🎵 1️⃣ FastAPI Build & Test
+  # 🎵 1️⃣ FastAPI Build & Validation
   # ============================================================
   build-api:
     name: Validate FastAPI (Backend)
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 코드 체크아웃
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ .env 생성 (Spotify Secrets + 기본값)
       - name: 🔧 Create .env file
         run: |
           echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" > .env
@@ -43,25 +49,23 @@ jobs:
           echo "MLFLOW_ADDR=http://mlops_runner:5000" >> .env
           echo "✅ .env file created successfully"
 
-      # 3️⃣ FastAPI Docker 빌드
       - name: 🏗️ Build FastAPI Docker image
         run: |
           docker build -f Dockerfile.api -t api-ci-test:latest .
           echo "✅ FastAPI image build completed"
 
-      # 4️⃣ FastAPI 서버 헬스체크
       - name: 🧠 Run FastAPI Healthcheck
         run: |
           docker run -d -p 8000:8000 --name api_ci api-ci-test:latest
           echo "🕐 Waiting for FastAPI to start..."
-          sleep 8
+          sleep 10
           echo "🔍 Checking /health endpoint..."
           curl -f http://localhost:8000/health || (docker logs api_ci && exit 1)
           docker stop api_ci
           echo "✅ FastAPI Healthcheck passed"
 
   # ============================================================
-  # 🖥️ 2️⃣ Streamlit Build & Test
+  # 🖥️ 2️⃣ Streamlit Build & Validation
   # ============================================================
   build-ui:
     name: Validate Streamlit (Frontend)
@@ -69,22 +73,19 @@ jobs:
     needs: build-api
 
     steps:
-      # 1️⃣ 코드 체크아웃
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Streamlit Docker 빌드
       - name: 🏗️ Build Streamlit Docker image
         run: |
           docker build -f Dockerfile.ui -t ui-ci-test:latest .
           echo "✅ Streamlit image build completed"
 
-      # 3️⃣ Streamlit 헬스체크
       - name: 🧠 Run Streamlit Healthcheck
         run: |
           docker run -d -p 8501:8501 --name ui_ci ui-ci-test:latest
           echo "🕐 Waiting for Streamlit to start..."
-          sleep 10
+          sleep 12
           echo "🔍 Checking Streamlit UI availability..."
           curl -f http://localhost:8501 || (docker logs ui_ci && exit 1)
           docker stop ui_ci
@@ -94,9 +95,9 @@ jobs:
   # ✅ 3️⃣ Summary
   # ============================================================
   summary:
-    name: CI Summary
+    name: CI/CD Summary
     runs-on: ubuntu-latest
     needs: [build-api, build-ui]
     steps:
-      - name: ✅ CI Complete
-        run: echo "✅ All builds and healthchecks succeeded!"
+      - name: ✅ CI/CD Complete
+        run: echo "✅ All builds and healthchecks succeeded successfully!"
