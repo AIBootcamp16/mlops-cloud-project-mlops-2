@@ -1,0 +1,45 @@
+# ============================================================
+# 🎵 FastAPI Backend (music_recommender_api)
+# ============================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app/mlops
+
+# ------------------------------------------------------------
+# 1️⃣ System dependencies (빌드 도중 C/C++ 확장 설치용)
+# ------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# 2️⃣ Python dependencies
+# ------------------------------------------------------------
+COPY requirements_api.txt .
+RUN pip install --no-cache-dir -r requirements_api.txt
+
+# ------------------------------------------------------------
+# 3️⃣ Application files
+# ------------------------------------------------------------
+COPY ./src ./src
+COPY ./models ./models
+COPY ./dataset ./dataset
+COPY .env ./
+
+# ------------------------------------------------------------
+# 4️⃣ Environment variables
+# ------------------------------------------------------------
+ENV PYTHONUNBUFFERED=1 \
+    PORT=8000 \
+    HOST=0.0.0.0 \
+    ENV_FILE=.env
+
+EXPOSE 8000
+HEALTHCHECK CMD curl --fail http://localhost:8000/health || exit 1
+
+# ------------------------------------------------------------
+# 5️⃣ Run FastAPI server
+# ------------------------------------------------------------
+CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]
