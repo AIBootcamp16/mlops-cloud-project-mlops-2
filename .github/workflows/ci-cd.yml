@@ -52,7 +52,7 @@ jobs:
         with:
           host: ${{ env.EC2_HOST }}
           username: ubuntu
-          key: ${{ env.EC2_SSH_KEY }}
+          key: ${{ env.EC2_SSH_KEY_PATH }}
           script: |
             cd /home/ubuntu/mlops-cloud-project-mlops-2
             if [ "${REBUILD}" == "true" ]; then
