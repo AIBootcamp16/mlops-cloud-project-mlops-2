@@ -1,48 +1,31 @@
 # ============================================================
-# 🎧 MLOps Music Recommender - FastAPI Backend (Dockerfile.api)
-# ------------------------------------------------------------
-# - FastAPI 기반 API 서버
-# - Spotify API, MLflow, 모델 로드 포함
-# - CI/CD (GitHub Actions) 및 로컬 환경 모두 호환
+# 🐳 FastAPI Backend Dockerfile (for GHCR)
 # ============================================================
 
 FROM python:3.11-slim AS base
 
-# ------------------------------------------------------------
-# 1️⃣ 시스템 기본 세팅
-# ------------------------------------------------------------
 WORKDIR /app/mlops
 
+# 필수 패키지 설치
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential curl && rm -rf /var/lib/apt/lists/*
 
-# ------------------------------------------------------------
-# 2️⃣ Python 의존성 설치
-# ------------------------------------------------------------
+# Python 의존성 복사 및 설치
 COPY requirements_api.txt .
 RUN pip install --no-cache-dir -r requirements_api.txt
 
-# ------------------------------------------------------------
-# 3️⃣ 애플리케이션 파일 복사
-# ------------------------------------------------------------
+# 프로젝트 코드 복사
 COPY ./src ./src
 
-# ✅ models 폴더가 있을 때만 복사
-RUN mkdir -p ./models
-RUN [ -d "./models" ] && cp -r ./models ./models || echo "⚠️ no models folder found, skipping"
+# 모델 및 데이터 디렉토리 생성 (없을 경우 대비)
+RUN mkdir -p ./models ./dataset/processed
 
-# ✅ dataset 폴더가 있을 때만 복사
-RUN mkdir -p ./dataset
-RUN [ -d "./dataset" ] && cp -r ./dataset ./dataset || echo "⚠️ no dataset folder found, skipping"
+# 선택적 파일 복사 (없어도 통과)
+COPY ./models ./models 2>/dev/null || true
+COPY ./dataset ./dataset 2>/dev/null || true
+COPY .env ./ 2>/dev/null || true
 
-# ✅ .env 파일이 있을 때만 복사
-RUN [ -f ".env" ] && cp .env ./ || echo "⚠️ no .env file found, skipping"
-
-# ------------------------------------------------------------
-# 4️⃣ FastAPI 서버 설정
-# ------------------------------------------------------------
+# FastAPI 포트
 EXPOSE 8000
 
 CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]

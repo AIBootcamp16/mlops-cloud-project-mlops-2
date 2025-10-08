@@ -1,34 +1,23 @@
-# =========================================================
-# 🎨 Streamlit Frontend - Optimized for Lightweight Build
-# =========================================================
-FROM python:3.10-slim AS builder
+# ============================================================
+# 🖥️ Streamlit Frontend Dockerfile (for GHCR)
+# ============================================================
 
+FROM python:3.10-slim AS builder
 WORKDIR /install
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl && rm -rf /var/lib/apt/lists/*
-
 COPY requirements_ui.txt .
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 RUN pip install --prefix=/install --no-cache-dir -r requirements_ui.txt
 
-
-# ---------- Runtime ----------
-FROM python:3.10-slim
-
+# ------------------------------------------------------------
+FROM python:3.10-slim AS runtime
 WORKDIR /app
-COPY --from=builder /install /usr/local
 
-# 📂 애플리케이션 파일 복사
+COPY --from=builder /install /usr/local
 COPY web ./web
 
-# 🧾 환경 변수 파일 (.env optional)
-RUN if [ -f .env ]; then \
-        echo "✅ Found .env file, copying..."; \
-        cp .env ./.env; \
-    else \
-        echo "⚠️ No .env found, skipping .env copy"; \
-    fi
+# .env 복사 (없어도 빌드 통과)
+COPY .env ./.env 2>/dev/null || true
 
 EXPOSE 8501
-
 CMD ["streamlit", "run", "web/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]

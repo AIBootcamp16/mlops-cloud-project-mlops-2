@@ -1,7 +1,8 @@
 # ============================================================
 # 🧪 CI Pipeline for MLOps Music Recommender
 # ------------------------------------------------------------
-# 트리거: main 브랜치 push 시 자동 실행
+# 트리거:
+#   - 수동 실행 (Actions 탭의 “Run workflow” 버튼)
 # 목적:
 #   - FastAPI (API) / Streamlit (UI) 빌드 검증
 #   - Spotify secrets 기반 환경 설정 테스트
@@ -11,8 +12,7 @@
 name: CI Pipeline (API & UI)
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch: # ✅ 수동 실행 전용
 
 env:
   REGISTRY: ghcr.io
@@ -31,30 +31,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 코드 체크아웃
-      - name: Checkout repository
+      # 1️⃣ 코드 체크아웃
+      - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      # 2. .env 생성 (Spotify Secrets + 안전 기본값)
-      - name: Create .env file
+      # 2️⃣ .env 생성 (Spotify Secrets + 기본값)
+      - name: 🔧 Create .env file
         run: |
-          cp .env.safe .env
-          echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" >> .env
+          echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" > .env
           echo "SPOTIPY_CLIENT_SECRET=${{ secrets.SPOTIPY_CLIENT_SECRET }}" >> .env
           echo "MLFLOW_ADDR=http://mlops_runner:5000" >> .env
+          echo "✅ .env file created successfully"
 
-      # 3. Docker 빌드
-      - name: Build FastAPI Docker image
+      # 3️⃣ FastAPI Docker 빌드
+      - name: 🏗️ Build FastAPI Docker image
         run: |
           docker build -f Dockerfile.api -t api-ci-test:latest .
+          echo "✅ FastAPI image build completed"
 
-      # 4. FastAPI 서버 헬스체크
-      - name: Run FastAPI Healthcheck
+      # 4️⃣ FastAPI 서버 헬스체크
+      - name: 🧠 Run FastAPI Healthcheck
         run: |
           docker run -d -p 8000:8000 --name api_ci api-ci-test:latest
+          echo "🕐 Waiting for FastAPI to start..."
           sleep 8
+          echo "🔍 Checking /health endpoint..."
           curl -f http://localhost:8000/health || (docker logs api_ci && exit 1)
           docker stop api_ci
+          echo "✅ FastAPI Healthcheck passed"
 
   # ============================================================
   # 🖥️ 2️⃣ Streamlit Build & Test
@@ -65,22 +69,26 @@ jobs:
     needs: build-api
 
     steps:
-      # 1. 코드 체크아웃
-      - name: Checkout repository
+      # 1️⃣ 코드 체크아웃
+      - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Docker 빌드 (UI)
-      - name: Build Streamlit Docker image
+      # 2️⃣ Streamlit Docker 빌드
+      - name: 🏗️ Build Streamlit Docker image
         run: |
           docker build -f Dockerfile.ui -t ui-ci-test:latest .
+          echo "✅ Streamlit image build completed"
 
-      # 3. Streamlit 헬스체크
-      - name: Run Streamlit Healthcheck
+      # 3️⃣ Streamlit 헬스체크
+      - name: 🧠 Run Streamlit Healthcheck
         run: |
           docker run -d -p 8501:8501 --name ui_ci ui-ci-test:latest
+          echo "🕐 Waiting for Streamlit to start..."
           sleep 10
+          echo "🔍 Checking Streamlit UI availability..."
           curl -f http://localhost:8501 || (docker logs ui_ci && exit 1)
           docker stop ui_ci
+          echo "✅ Streamlit Healthcheck passed"
 
   # ============================================================
   # ✅ 3️⃣ Summary
@@ -88,7 +96,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [ build-api, build-ui ]
+    needs: [build-api, build-ui]
     steps:
       - name: ✅ CI Complete
         run: echo "✅ All builds and healthchecks succeeded!"
