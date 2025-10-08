@@ -1,7 +1,10 @@
 # ============================================================
-# 🎧 MLOps Music Recommender System - Unified Docker Compose
+# 🎧 MLOps Music Recommender System - Unified Compose
+# ------------------------------------------------------------
+#  구성 요소:
+#   - FastAPI (Backend)
+#   - Streamlit (Frontend)
 # ============================================================
-version: "3.9"
 
 services:
   # -------------------------------
@@ -17,20 +20,21 @@ services:
     env_file:
       - .env
     volumes:
-      - ./src:/app/mlops/src
-      - ./models:/app/mlops/models
-      - ./dataset:/app/mlops/dataset
+      # 로컬 데이터셋 / 모델 마운트
+      - ./src:/app/mlops/src:ro
+      - ./models:/app/mlops/models:ro
+      - ./dataset:/app/mlops/dataset:ro
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
+      interval: 20s
+      timeout: 5s
       retries: 3
     networks:
       - mlops_net
 
   # -------------------------------
-  # 🖥️ Streamlit UI
+  # 🖥️ Streamlit Frontend
   # -------------------------------
   music_recommender_ui:
     build:
@@ -42,7 +46,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - music_recommender_api
+      music_recommender_api:
+        condition: service_healthy
     volumes:
       - ./web:/app/web
     restart: always
@@ -50,7 +55,7 @@ services:
       - mlops_net
 
 # -------------------------------
-# 🌐 Network
+# 🌐 Network Configuration
 # -------------------------------
 networks:
   mlops_net:

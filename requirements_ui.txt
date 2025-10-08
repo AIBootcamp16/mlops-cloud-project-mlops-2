@@ -1,5 +1,9 @@
-# Streamlit UI requirements
-streamlit
-pandas
-requests
-pymysql
+# ============================================================
+# Streamlit UI Dependencies
+# ============================================================
+streamlit>=1.36
+pandas>=2.1
+requests>=2.31
+pillow>=10.3
+pymysql>=1.1
+spotipy>=2.23
