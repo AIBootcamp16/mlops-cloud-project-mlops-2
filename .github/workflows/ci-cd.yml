@@ -45,7 +45,7 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
-      - name: Check EC2 Host Value (Debug)
+      - name: (Debug) Check EC2 Host Value 
         run: echo "The EC2_HOST value is.. ${{ env.EC2_HOST }}"
 
       - name: Deploy to EC2
