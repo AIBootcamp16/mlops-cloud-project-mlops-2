@@ -1,12 +1,12 @@
 # ============================================================
-# 🚀 GitHub Actions: MLOps Music Recommender CI/CD Pipeline
+# 🚀 GitHub Actions: CI/CD for gogoAiHunters MLOps Project
 # ------------------------------------------------------------
 # 트리거:
-#   - v* 태그 푸시 (예: v1.0.1-stable)
+#   - v* 태그 푸시 시 실행 (예: v1.0.2-stable)
 # 주요 기능:
-#   - Spotify API Secrets 주입
 #   - FastAPI / Streamlit Docker 이미지 빌드 및 테스트
-#   - GHCR(gogoAiHunters 네임스페이스)에 업로드
+#   - GHCR (GitHub Container Registry)에 이미지 업로드
+#   - Spotify API Secrets 자동 주입
 # ============================================================
 
 name: Build and Push to gogoAiHunters GHCR
@@ -18,8 +18,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_API: gogoaihunter/mlops-cloud-project-mlops-2-api
-  IMAGE_UI: gogoaihunter/mlops-cloud-project-mlops-2-ui
+  ORG: gogoAiHunters                 # ✅ 정확한 조직명 (대문자 A, H)
+  IMAGE_API: mlops-cloud-project-mlops-2-api
+  IMAGE_UI: mlops-cloud-project-mlops-2-ui
 
 permissions:
   contents: read
@@ -27,51 +28,54 @@ permissions:
 
 jobs:
   # ============================================================
-  # 🎵 1️⃣ Build FastAPI Backend Image
+  # 🧩 1️⃣ Build FastAPI (API) Docker Image
   # ============================================================
   build-api:
-    name: Build FastAPI (API)
+    name: Build & Push FastAPI Image
     runs-on: ubuntu-latest
 
     steps:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Prepare environment (.env)
+      - name: 🧰 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🧩 Prepare .env file
         run: |
-          cp .env.safe .env || echo "⚠️ Using default safe env"
+          echo "MLFLOW_ADDR=http://mlops_runner:5000" > .env
           echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" >> .env
           echo "SPOTIPY_CLIENT_SECRET=${{ secrets.SPOTIPY_CLIENT_SECRET }}" >> .env
-          echo "MLFLOW_ADDR=http://mlops_runner:5000" >> .env
 
-      - name: 🔐 Log in to GitHub Container Registry (GHCR)
+      - name: 🔑 Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: 🐳 Build FastAPI Docker image
+      - name: 🏗️ Build API Docker Image
         run: |
           docker build -f Dockerfile.api \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.ref_name }} .
+            -t ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_API }}:${{ github.ref_name }} .
 
-      - name: 🩺 Run API Healthcheck
+      - name: ✅ Healthcheck FastAPI
         run: |
-          docker run -d -p 8000:8000 --name api_test ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
+          docker run -d -p 8000:8000 --name api_test \
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
           sleep 10
           curl -f http://localhost:8000/health || (docker logs api_test && exit 1)
           docker stop api_test
 
       - name: 📦 Push API image to GHCR
-        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
-
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
 
   # ============================================================
-  # 🖥️ 2️⃣ Build Streamlit Frontend Image
+  # 🖥️ 2️⃣ Build Streamlit (UI) Docker Image
   # ============================================================
   build-ui:
-    name: Build Streamlit (UI)
+    name: Build & Push Streamlit UI Image
     runs-on: ubuntu-latest
     needs: build-api
 
@@ -79,24 +83,29 @@ jobs:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🔐 Log in to GHCR
+      - name: 🧰 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: 🐳 Build Streamlit Docker image
+      - name: 🏗️ Build Streamlit UI Docker Image
         run: |
           docker build -f Dockerfile.ui \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_UI }}:${{ github.ref_name }} .
+            -t ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_UI }}:${{ github.ref_name }} .
 
-      - name: 🩺 Run UI Healthcheck
+      - name: ✅ Healthcheck Streamlit UI
         run: |
-          docker run -d -p 8501:8501 --name ui_test ${{ env.REGISTRY }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
+          docker run -d -p 8501:8501 --name ui_test \
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
           sleep 10
           curl -f http://localhost:8501 || (docker logs ui_test && exit 1)
           docker stop ui_test
 
       - name: 📦 Push UI image to GHCR
-        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
