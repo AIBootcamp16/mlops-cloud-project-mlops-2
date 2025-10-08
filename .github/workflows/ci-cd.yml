@@ -4,10 +4,11 @@
 # 트리거:
 #   - main 브랜치 푸시
 #   - 태그(v*) 푸시
+#   - 수동 실행 (workflow_dispatch)
 # 주요 기능:
-#   - FastAPI / Streamlit 빌드 및 헬스체크
-#   - Spotify secrets 기반 환경 테스트
-#   - 빌드 안정성 검증 (배포 전)
+#   - FastAPI / Streamlit Docker 빌드 및 헬스체크
+#   - Spotify Secrets 기반 환경 검증
+#   - 빌드 안정성 보장 (배포 전 자동 검증)
 # ============================================================
 
 name: CI/CD Pipeline (Auto Validation)
@@ -16,13 +17,13 @@ on:
   push:
     branches:
       - main
-  push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  ORG: gogoaihunter
+  ORG: gogoaihunter                # ⚠️ 반드시 소문자 유지 (GHCR 규칙)
   IMAGE_API: mlops-cloud-project-mlops-2-api
   IMAGE_UI: mlops-cloud-project-mlops-2-ui
 
@@ -60,9 +61,15 @@ jobs:
           echo "🕐 Waiting for FastAPI to start..."
           sleep 10
           echo "🔍 Checking /health endpoint..."
-          curl -f http://localhost:8000/health || (docker logs api_ci && exit 1)
+          if curl -fs http://localhost:8000/health; then
+            echo "✅ FastAPI Healthcheck passed"
+          else
+            echo "❌ FastAPI Healthcheck failed"
+            docker logs api_ci
+            exit 1
+          fi
           docker stop api_ci
-          echo "✅ FastAPI Healthcheck passed"
+          docker rm api_ci
 
   # ============================================================
   # 🖥️ 2️⃣ Streamlit Build & Validation
@@ -87,9 +94,15 @@ jobs:
           echo "🕐 Waiting for Streamlit to start..."
           sleep 12
           echo "🔍 Checking Streamlit UI availability..."
-          curl -f http://localhost:8501 || (docker logs ui_ci && exit 1)
+          if curl -fs http://localhost:8501; then
+            echo "✅ Streamlit Healthcheck passed"
+          else
+            echo "❌ Streamlit Healthcheck failed"
+            docker logs ui_ci
+            exit 1
+          fi
           docker stop ui_ci
-          echo "✅ Streamlit Healthcheck passed"
+          docker rm ui_ci
 
   # ============================================================
   # ✅ 3️⃣ Summary
@@ -98,6 +111,9 @@ jobs:
     name: CI/CD Summary
     runs-on: ubuntu-latest
     needs: [build-api, build-ui]
+
     steps:
-      - name: ✅ CI/CD Complete
-        run: echo "✅ All builds and healthchecks succeeded successfully!"
+      - name: ✅ CI/CD Completed
+        run: |
+          echo "✅ All builds and healthchecks succeeded successfully!"
+          echo "🎯 FastAPI and Streamlit validated under tag: ${{ github.ref_name }}"
