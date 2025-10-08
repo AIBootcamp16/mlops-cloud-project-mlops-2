@@ -20,4 +20,4 @@ services:
       # - EC2_HOST=${EC2_HOST}
     working_dir: /usr/local/airflow
     # entrypoint: /bin/bash -c 'chown -R 50000:0 /usr/local/airflow && exec /entrypoint.sh' 
-    # command: webserver
+    # command: webserver ##
