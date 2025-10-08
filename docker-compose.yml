@@ -29,10 +29,10 @@ services:
       - EC2_USER=${EC2_SSH_KEY}
     working_dir: /usr/local/airflow
     # command: bash -c "airflow db init && airflow webserver -p 8080 & airflow scheduler"    
-    command: >
-      bash -c "
-      airflow db init &&
-      airflow users create --username airflow --password airflow --firstname air --lastname flow --role Admin --email airflow@example.com &&
-      airflow webserver -p 8080 &
-      airflow scheduler
-      "
+    # command: >
+    #   bash -c "
+    #   airflow db init &&
+    #   airflow users create --username airflow --password airflow --firstname air --lastname flow --role Admin --email airflow@example.com &&
+    #   airflow webserver -p 8080 &
+    #   airflow scheduler
+    #   "
