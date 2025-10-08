@@ -10,6 +10,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      EC2_HOST: ${{ env.EC2_HOST }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -42,10 +45,8 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
-      # 계속 여기서 오류나서 주석.. 
-      # - name: Run simple Python test
-      #   run: |
-      #     docker run --rm $IMAGE_TAG /bin/bash -c "python -c 'print(\"Docker test OK\")'"
+      - name: Check EC2 Host Value (Debug)
+        run: echo "The EC2_HOST value is: ${{ env.EC2_HOST }}"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
@@ -63,7 +64,3 @@ jobs:
             else
               docker compose restart airflow
             fi
-          # script: |
-          #   # docker pull $IMAGE_TAG
-          #   # docker-compose -f /home/ubuntu/mlops-cloud-project-mlops-2/docker-compose.yml down
-          #   # docker-compose -f /home/ubuntu/mlops-cloud-project-mlops-2/docker-compose.yml up -d --build
