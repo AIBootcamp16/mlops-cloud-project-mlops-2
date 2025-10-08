@@ -1,39 +1,57 @@
 # ============================================================
-# 🚀 Dockerfile.api — FastAPI Backend for gogoAiHunters Project
+# 🚀 Dockerfile.api — FastAPI Backend for MLOps Music Recommender
 # ------------------------------------------------------------
-# 특징:
-#   - python:3.11-slim 기반
-#   - requirements_api.txt 사용
-#   - models / dataset 디렉토리 없을 경우 자동 무시
+# ✅ 특징
+# - python:3.11-slim 기반 (경량)
+# - LightGBM 실행을 위한 libgomp1 포함
+# - requirements_api.txt 사용
+# - models / dataset 디렉토리 없을 경우 자동 생성
+# - CI/CD 및 로컬 실행 모두 호환
 # ============================================================
 
 FROM python:3.11-slim AS base
 
-# 환경변수 설정
+# ------------------------------------------------------------
+# 1️⃣ 환경 변수 설정
+# ------------------------------------------------------------
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PATH="/root/.local/bin:$PATH"
 
-WORKDIR /app
+WORKDIR /app/mlops
 
-# 2️⃣ Install dependencies
+# ------------------------------------------------------------
+# 2️⃣ 시스템 패키지 설치 (LightGBM/FAISS 등 실행용)
+# ------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 curl build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# 3️⃣ Python 의존성 설치
+# ------------------------------------------------------------
 COPY requirements_api.txt .
 RUN pip install --no-cache-dir -r requirements_api.txt
 
-# 3️⃣ Copy project files
-COPY . .
+# ------------------------------------------------------------
+# 4️⃣ 프로젝트 파일 복사
+# ------------------------------------------------------------
+COPY src ./src
+COPY main.py ./main.py
 
-# 4️⃣ Ensure optional folders exist
-RUN mkdir -p /app/models /app/dataset \
- && (test -d "./models" && echo "✅ models found" || echo "⚠️ no models, skipping") \
- && (test -d "./dataset" && echo "✅ dataset found" || echo "⚠️ no dataset, skipping")
+# 모델 및 데이터 디렉토리 (없어도 오류 없이 생성)
+RUN mkdir -p models dataset
 
-# 5️⃣ Healthcheck
+# ------------------------------------------------------------
+# 5️⃣ 헬스체크 (FastAPI /health 엔드포인트)
+# ------------------------------------------------------------
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
  CMD curl -f http://localhost:8000/health || exit 1
 
-# 6️⃣ Expose & Run
+# ------------------------------------------------------------
+# 6️⃣ FastAPI 실행
+# ------------------------------------------------------------
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn src.api.api:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
