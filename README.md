@@ -1,7 +1,6 @@
 # 🎧 사용자 선호도 기반 음악 추천 시스템
 
 <br>
-
 ## 💻 프로젝트 소개
 ### 🎵 Seed-based Music Recommendation System
 
@@ -46,29 +45,30 @@ Spotify API를 활용하여 **검색 / 메타데이터 / 오디오 특성**을 �
 <br>
 
 ## 📁 프로젝트 구조
+```
 mlops-cloud-project-mlops-2/
-├─ dataset/
-│ ├─ raw/ # Spotify 원본 데이터 (Git 업로드 제외)
-│ └─ processed/ # 전처리 데이터 (로컬 유지)
-├─ models/ # 학습된 모델 아티팩트
-├─ src/
-│ ├─ main.py # FastAPI 서버 엔트리포인트
-│ ├─ api/api.py # API 라우팅
-│ ├─ web/streamlit_app.py # Streamlit UI
-│ ├─ model/ # 모델 정의 (FAISS, LGBM, Finder 등)
-│ ├─ data/build_dataset.py # 데이터 처리 파이프라인
-│ ├─ utils/ # 유틸리티 함수
-│ └─ tests/ # 테스트 코드
-├─ Dockerfile # FastAPI 서버용
-├─ Dockerfile.ui # Streamlit UI용
-├─ Dockerfile.airflow # Airflow 컨테이너 (내부에서 pip install)
-├─ Dockerfile.mlflow # MLflow 컨테이너
-├─ docker-compose.yml # 전체 서비스 통합 구성
-├─ .env / .env.safe / .env.template # 환경 설정 파일
-├─ requirements_api.txt / requirements_ui.txt
-└─ README.md
-
-> 💡 Airflow는 `Dockerfile.airflow` 내부에서 패키지를 직접 설치합니다.
+  ├── dataset/
+  │   ├─ raw/ # Spotify 원본 데이터 (Git 업로드 제외)
+  │   └─ processed/ # 전처리 데이터 (로컬 유지)
+  ├── models/ # 학습된 모델 아티팩트
+  ├── src/
+  │   ├─ main.py # FastAPI 서버 엔트리포인트
+  │   ├─ api/api.py # API 라우팅
+  │   ├─ web/streamlit_app.py # Streamlit UI
+  │   ├─ model/ # 모델 정의 (FAISS, LGBM, Finder 등)
+  │   ├─ data/build_dataset.py # 데이터 처리 파이프라인
+  │   ├─ utils/ # 유틸리티 함수
+  │   └─ tests/ # 테스트 코드
+  ├── Dockerfile # FastAPI 서버용
+  ├── Dockerfile.ui # Streamlit UI용
+  ├── Dockerfile.airflow # Airflow 컨테이너 (내부에서 pip install)
+  ├── Dockerfile.mlflow # MLflow 컨테이너
+  ├── docker-compose.yml # 전체 서비스 통합 구성
+  ├── .env / .env.safe / .env.template # 환경 설정 파일
+  ├── requirements_api.txt / requirements_ui.txt
+  └── README.md
+  > 💡 Airflow는 `Dockerfile.airflow` 내부에서 패키지를 직접 설치합니다.
+```
 
 <br>
 
@@ -98,80 +98,77 @@ mlops-cloud-project-mlops-2/
 
 ## 🚀 실행 방법
 
-### 1️⃣ 환경 변수 설정  
-- `.env.safe`를 `.env`로 복사 시 **Spotify 인증 없이 서버 부팅 가능**  
-- 실제 Spotify API 사용 시 `.env.template`의 Client ID/Secret 추가  
+## 1️⃣ 환경 변수 설정  
 
-```bash
-cp .env.safe .env
-2️⃣ FastAPI 서버 실행
-bash
-코드 복사
-docker build -t music_api -f Dockerfile .
-docker run -p 8000:8000 music_api
-3️⃣ Streamlit UI 실행
-bash
-코드 복사
-docker build -t music_ui -f Dockerfile.ui .
-docker run -p 8501:8501 music_ui
-4️⃣ 전체 서비스 통합 실행
-bash
-코드 복사
-docker compose up -d --build
-FastAPI, Streamlit, Airflow, MLflow 컨테이너가 함께 구동됩니다.
+Spotify 인증 없이 실행하려면:
+
+- cp .env.safe .env 
+- `.env.safe`를 `.env`로 복사 시 **Spotify 인증 없이 서버 부팅 가능**
+
+Spotify API를 사용하려면:
+
+- cp .env.template .env
+- 실제 Spotify API 사용 시 `.env.template`의 Client ID/Secret 추가
+
+## 2️⃣ FastAPI 서버 실행
+
+- docker build -t music_api -f Dockerfile .
+- docker run -p 8000:8000 music_api
+
+## 3️⃣ Streamlit UI 실행
+
+- docker build -t music_ui -f Dockerfile.ui .
+- docker run -p 8501:8501 music_ui
+
+## 4️⃣ 전체 서비스 통합 실행
+
+- docker compose up -d --build
+- FastAPI, Streamlit, Airflow, MLflow 컨테이너가 함께 구동됩니다.
 
 <br>
-⚙️ 빌드 최적화
+
+### ⚙️ 빌드 최적화
 3단계 빌드 전략 (builder → artifact → runtime)
 
-dataset/*.csv 제외로 빌드 시간 단축
+- dataset/*.csv 제외로 빌드 시간 단축
 
-requirements_* 캐시 고정으로 3분 → 10초
+- requirements_* 캐시 고정으로 3분 → 10초
 
-API/UI 분리로 컨테이너 효율 향상
+- API/UI 분리로 컨테이너 효율 향상
 
 <br>
-🚨 트러블 슈팅
+
+### 🚨 트러블 슈팅
 1. Spotify API 인증 실패
-설명
-.env에 Client ID / Secret 누락 시 발생
-
-해결
-bash
-코드 복사
-SPOTIPY_CLIENT_ID=<your_id>
-SPOTIPY_CLIENT_SECRET=<your_secret>
+    - .env에 Client ID / Secret 누락 시 발생
+    - 해결 :
+      SPOTIPY_CLIENT_ID=<your_id>
+      SPOTIPY_CLIENT_SECRET=<your_secret>
 2. FastAPI 서버 부팅 실패
-설명
-spotify_data_clean.csv 미존재 시 발생
-
-해결
-dataset/processed/spotify_data_clean.csv 추가 후 재빌드
-
+    - spotify_data_clean.csv 미존재 시 발생
+    - 해결 :
+      dataset/processed/spotify_data_clean.csv 추가 후 재빌드
 3. Docker 빌드 지연
-설명
-캐시 미사용 또는 dataset 복사 포함
-
-해결
-bash
-코드 복사
-docker compose build --no-cache
+    - 캐시 미사용 또는 dataset 복사 포함
+    - 해결 :
+      docker compose build --no-cache
+      
 <br>
-📌 프로젝트 회고
-Docker 기반 통합 환경으로 실행 안정성 확보
 
-빌드 캐시 최적화로 개발 효율 향상
+### 📌 프로젝트 회고
 
-Airflow / MLflow 연동으로 MLOps 자동화 기반 마련
+- Docker 기반 통합 환경으로 실행 안정성 확보
+- 빌드 캐시 최적화로 개발 효율 향상
+- Airflow / MLflow 연동으로 MLOps 자동화 기반 마련
 
 <br>
-📰 참고자료
-Spotify Web API Documentation
 
-FastAPI Official Docs
+### 📰 참고자료
+- Spotify Web API Documentation
+- FastAPI Official Docs
+- Streamlit Docs
+- MLflow Docs
+- Apache Airflow Docs
 
-Streamlit Docs
+ 
 
-MLflow Docs
-
-Apache Airflow Docs
