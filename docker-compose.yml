@@ -26,7 +26,7 @@ services:
     environment:
       - AIRFLOW_HOME=/usr/local/airflow
       - EC2_HOST=${EC2_HOST}
-      - EC2_USER=${EC2_SSH_KEY}
+      - EC2_SSH_KEY_PATH=${EC2_SSH_KEY_PATH}
     working_dir: /usr/local/airflow
     # command: bash -c "airflow db init && airflow webserver -p 8080 & airflow scheduler"    
     # command: >
