@@ -281,3 +281,5 @@ members/*/*.pkl
 # Git LFS/Ignore 문제를 해결하기 위해 이 파일을 강제 추적
 !dataset/processed/spotify_data_clean.csv
 logs/
+dataset/raw/spotify_data.csv
+dataset/processed/spotify_data_clean.csv
