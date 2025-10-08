@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ "main" ]   # main 브랜치에 push 될 때 실행
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ]   # main 브랜치에 push 될 때 실행 # PR 생성 시 CI 테스트
+  push:
+    branches: [ "main" ]   # merge 후 main 브랜치에 push 시 CD 실행
 
 jobs:
   build:
@@ -47,6 +47,7 @@ jobs:
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
+        if: github.ref == 'refs/heads/main'      # main 브랜치 push 시만 실행
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
