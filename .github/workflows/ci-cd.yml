@@ -46,7 +46,7 @@ jobs:
           docker push $IMAGE_TAG
 
       - name: Check EC2 Host Value (Debug)
-        run: echo "The EC2_HOST value is: ${{ env.EC2_HOST }}"
+        run: echo "The EC2_HOST value is.. ${{ env.EC2_HOST }}"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
