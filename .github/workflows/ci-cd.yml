@@ -10,9 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      EC2_HOST: ${{ env.EC2_HOST }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -46,12 +43,12 @@ jobs:
           docker push $IMAGE_TAG
 
       - name: (Debug) Check EC2 Host Value 
-        run: echo "The EC2_HOST value is.. ${{ env.EC2_HOST }}"
+        run: echo "The EC2_HOST value is.. ${{ secrets.EC2_HOST }}"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ env.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
 
