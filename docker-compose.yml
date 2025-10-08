@@ -1,26 +1,35 @@
 # ============================================================
-# 🎧 MLOps Music Recommender System - Unified Compose
+# 🎧 MLOps Music Recommender System - Unified Docker Compose
 # ------------------------------------------------------------
-#  구성 요소:
-#   - FastAPI (Backend)
-#   - Streamlit (Frontend)
+# 구성 요소:
+#   - FastAPI (Backend API)
+#   - Streamlit (Frontend UI)
+#   - MLflow (Tracking & Model Registry)
+#   - Airflow (Pipeline Orchestration)
+#
+# 태그 기반 CI/CD (GitHub Actions build.yml)와 동일한 서비스명 유지
 # ============================================================
 
+version: "3.9"
+
 services:
-  # -------------------------------
-  # 🎵 FastAPI Backend
-  # -------------------------------
+  # ============================================================
+  # 🎵 FASTAPI Backend Service
+  # ------------------------------------------------------------
+  # - API 서버 (Model Inference, Artifact Loading)
+  # - Healthcheck 기반으로 UI 서비스가 의존
+  # ============================================================
   music_recommender_api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.api
     container_name: music_recommender_api
     ports:
       - "8000:8000"
     env_file:
       - .env
     volumes:
-      # 로컬 데이터셋 / 모델 마운트
+      # 읽기 전용 마운트로 코드 안정성 확보
       - ./src:/app/mlops/src:ro
       - ./models:/app/mlops/models:ro
       - ./dataset:/app/mlops/dataset:ro
@@ -33,9 +42,12 @@ services:
     networks:
       - mlops_net
 
-  # -------------------------------
-  # 🖥️ Streamlit Frontend
-  # -------------------------------
+  # ============================================================
+  # 🖥️ STREAMLIT Frontend UI
+  # ------------------------------------------------------------
+  # - 사용자 인터페이스 (검색 / 추천 결과 시각화)
+  # - API 서버 Healthcheck 완료 후 시작
+  # ============================================================
   music_recommender_ui:
     build:
       context: .
@@ -54,9 +66,73 @@ services:
     networks:
       - mlops_net
 
-# -------------------------------
-# 🌐 Network Configuration
-# -------------------------------
+  # ============================================================
+  # 📊 MLflow Tracking Server
+  # ------------------------------------------------------------
+  # - 모델 실험 관리 및 버전 트래킹
+  # - MinIO/S3 혹은 로컬 경로 기반 Artifact Store 사용
+  # ============================================================
+  mlops_runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlops_runner
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+      - ./models:/mlflow/models
+    working_dir: /app/mlops/src
+    command: >
+      bash -c "mlflow server
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root ./mlruns
+      --host 0.0.0.0 --port 5000"
+    restart: unless-stopped
+    networks:
+      - mlops_net
+
+  # ============================================================
+  # 🪶 AIRFLOW Pipeline Orchestrator
+  # ------------------------------------------------------------
+  # - DAG 기반 파이프라인 자동 실행 및 CI/CD 태그 연동
+  # - DB 초기화, Admin 계정 자동 생성
+  # ============================================================
+  mlops_airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: mlops_airflow
+    ports:
+      - "8080:8080"  # Airflow Web UI
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+      - ./tmp:/tmp
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create --username admin
+                           --firstname Admin
+                           --lastname User
+                           --role Admin
+                           --email admin@example.com
+                           --password admin123 &&
+      airflow webserver & airflow scheduler
+      "
+    restart: unless-stopped
+    networks:
+      - mlops_net
+
+# ============================================================
+# 🌐 NETWORK CONFIGURATION
+# ------------------------------------------------------------
+# 모든 서비스가 공유하는 네트워크.
+# Docker Bridge 방식으로 격리된 내부 통신.
+# ============================================================
 networks:
   mlops_net:
     driver: bridge

@@ -47,27 +47,52 @@ Spotify API를 활용하여 **검색 / 메타데이터 / 오디오 특성**을 �
 ## 📁 프로젝트 구조
 ```
 mlops-cloud-project-mlops-2/
-  ├── dataset/
-  │   ├─ raw/ # Spotify 원본 데이터 (Git 업로드 제외)
-  │   └─ processed/ # 전처리 데이터 (로컬 유지)
-  ├── models/ # 학습된 모델 아티팩트
-  ├── src/
-  │   ├─ main.py # FastAPI 서버 엔트리포인트
-  │   ├─ api/api.py # API 라우팅
-  │   ├─ web/streamlit_app.py # Streamlit UI
-  │   ├─ model/ # 모델 정의 (FAISS, LGBM, Finder 등)
-  │   ├─ data/build_dataset.py # 데이터 처리 파이프라인
-  │   ├─ utils/ # 유틸리티 함수
-  │   └─ tests/ # 테스트 코드
-  ├── Dockerfile # FastAPI 서버용
-  ├── Dockerfile.ui # Streamlit UI용
-  ├── Dockerfile.airflow # Airflow 컨테이너 (내부에서 pip install)
-  ├── Dockerfile.mlflow # MLflow 컨테이너
-  ├── docker-compose.yml # 전체 서비스 통합 구성
-  ├── .env / .env.safe / .env.template # 환경 설정 파일
-  ├── requirements_api.txt / requirements_ui.txt
-  └── README.md
-  > 💡 Airflow는 `Dockerfile.airflow` 내부에서 패키지를 직접 설치합니다.
+├── dataset/
+│ ├─ raw/ # Spotify 원본 데이터 (Git 업로드 제외)
+│ └─ processed/ # 전처리된 데이터 (로컬 유지)
+│
+├── models/ # 학습된 모델 및 Finder 아티팩트
+│
+├── src/ # 애플리케이션 주요 코드
+│ ├─ main.py # FastAPI 서버 엔트리포인트
+│ ├─ api/api.py # API 라우팅 및 엔드포인트 정의
+│ ├─ web/streamlit_app.py # Streamlit UI 실행 스크립트
+│ ├─ model/ # 추천 모델 (FAISS, LightGBM 등)
+│ ├─ data/build_dataset.py # 데이터 전처리 및 파이프라인
+│ ├─ utils/ # 공용 유틸리티 함수
+│ └─ tests/ # 테스트 코드
+│
+├── dags/ # Airflow DAG 정의 (워크플로 관리)
+├── tmp/ # 임시 디렉토리 (Airflow/MLflow 캐시)
+│
+├── Dockerfile.api # 🎵 FastAPI (Backend) 빌드용
+├── Dockerfile.ui # 🖥️ Streamlit (Frontend) 빌드용
+├── Dockerfile.airflow # ☁️ Airflow 컨테이너 빌드용
+├── Dockerfile.mlflow # 🧪 MLflow Tracking Server 빌드용
+│
+├── docker-compose.yml # 전체 서비스 통합 실행 설정
+│
+├── .github/
+│ └─ workflows/
+│ ├─ ci-cd.yml # main 브랜치용 CI (테스트 빌드)
+│ └─ build.yml # 태그 기반 CD (배포 빌드)
+│
+├── docs/
+│ └─ ci-cd-setup.md # CI/CD 상세 설정 가이드 (README 부록 버전)
+│
+├── .env # 로컬 환경 변수 (Git 미포함)
+├── .env.safe # Spotify 인증 없이 실행용
+├── .env.template # Spotify API 인증 템플릿
+│
+├── requirements_api.txt # FastAPI 의존성
+├── requirements_ui.txt # Streamlit 의존성
+│
+├── .dockerignore # Docker 빌드 제외 규칙
+├── .gitignore # Git 제외 규칙
+└── README.md # 📘 프로젝트 문서 (현재 파일)
+
+💡 Airflow는 Dockerfile.airflow 내부에서 의존성을 직접 설치합니다.
+CI/CD 파이프라인 설정은 .github/workflows 디렉토리에서 관리됩니다.
 ```
 
 <br>
@@ -171,4 +196,34 @@ Spotify API를 사용하려면:
 - Apache Airflow Docs
 
  
+---
 
+## ⚙️ CI/CD 환경 설정 가이드 (GitHub Actions)
+
+이 프로젝트는 GitHub Actions를 통해 자동으로 빌드 및 배포됩니다.  
+Secrets를 등록하면 main 브랜치 Push 시에는 **CI(테스트 빌드)**,  
+버전 태그 Push 시에는 **CD(배포 빌드)** 가 자동 실행됩니다.
+
+### 🔐 등록해야 할 Secrets
+| 이름 | 설명 |
+|------|------|
+| `SPOTIPY_CLIENT_ID` | Spotify API Client ID |
+| `SPOTIPY_CLIENT_SECRET` | Spotify API Secret |
+| `AWS_ACCESS_KEY_ID` | MinIO 또는 S3 Access Key |
+| `AWS_SECRET_ACCESS_KEY` | MinIO 또는 S3 Secret Key |
+| `MLFLOW_ADDR` | MLflow Tracking 서버 주소 |
+
+> `.env` 파일은 Git에 포함하지 않습니다.  
+> CI/CD 실행 중에 이 Secrets 값이 자동으로 `.env`로 주입됩니다.
+
+### 🚀 실행 트리거
+| 트리거 | 동작 |
+|--------|------|
+| `push → main` | FastAPI / Streamlit 빌드 및 헬스체크 (CI) |
+| `push → tag (v1.0.0-stable 등)` | Docker 이미지 빌드 및 GHCR 배포 (CD) |
+
+```bash
+# 예시
+git push origin main          # CI 자동 실행
+git tag v1.0.0-stable
+git push origin v1.0.0-stable # CD 자동 실행
