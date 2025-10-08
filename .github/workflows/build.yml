@@ -1,12 +1,5 @@
 # ============================================================
 # 🚀 GitHub Actions: MLOps Music Recommender CI/CD Pipeline
-# ------------------------------------------------------------
-# 트리거:
-#   - v* 태그 푸시 (예: v1.0.0-stable)
-# 주요 기능:
-#   - Spotify API Secrets 주입
-#   - FastAPI / Streamlit Docker 이미지 빌드 및 테스트
-#   - GHCR(GitHub Container Registry) 푸시
 # ============================================================
 
 name: Build and Test (API & UI)
@@ -18,8 +11,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_API: ${{ github.repository_owner | toLowerCase }}/$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')-api
-  IMAGE_UI: ${{ github.repository_owner | toLowerCase }}/$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')-ui
 
 permissions:
   contents: read
@@ -34,11 +25,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 저장소 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. 환경 파일 구성 (.env.safe + Spotify Secrets 덮어쓰기)
       - name: Set up environment (.env)
         run: |
           cp .env.safe .env
@@ -46,7 +35,6 @@ jobs:
           echo "SPOTIPY_CLIENT_SECRET=${{ secrets.SPOTIPY_CLIENT_SECRET }}" >> .env
           echo "MLFLOW_ADDR=http://mlops_runner:5000" >> .env
 
-      # 3. Docker 로그인 (GHCR)
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -54,22 +42,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4. FastAPI 이미지 빌드
       - name: Build FastAPI Docker image
         run: |
-          docker build -f Dockerfile.api -t ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.ref_name }} .
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          docker build -f Dockerfile.api -t ghcr.io/${REPO_LC}-api:${GITHUB_REF_NAME} .
 
-      # 5. 헬스체크 (API 서버 실행 후 /health 테스트)
       - name: Run healthcheck
         run: |
-          docker run -d -p 8000:8000 --name api_test ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          docker run -d -p 8000:8000 --name api_test ghcr.io/${REPO_LC}-api:${GITHUB_REF_NAME}
           sleep 10
           curl -f http://localhost:8000/health || (docker logs api_test && exit 1)
           docker stop api_test
 
-      # 6. 이미지 푸시
       - name: Push API image to GHCR
-        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
+        run: |
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          docker push ghcr.io/${REPO_LC}-api:${GITHUB_REF_NAME}
 
 
   # ============================================================
@@ -81,11 +70,9 @@ jobs:
     needs: build-api
 
     steps:
-      # 1. 저장소 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Docker 로그인
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -93,19 +80,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Streamlit 이미지 빌드
       - name: Build Streamlit Docker image
         run: |
-          docker build -f Dockerfile.ui -t ${{ env.REGISTRY }}/${{ env.IMAGE_UI }}:${{ github.ref_name }} .
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          docker build -f Dockerfile.ui -t ghcr.io/${REPO_LC}-ui:${GITHUB_REF_NAME} .
 
-      # 4. 간단 헬스체크 (포트 열림 확인)
       - name: Run healthcheck
         run: |
-          docker run -d -p 8501:8501 --name ui_test ${{ env.REGISTRY }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          docker run -d -p 8501:8501 --name ui_test ghcr.io/${REPO_LC}-ui:${GITHUB_REF_NAME}
           sleep 10
           curl -f http://localhost:8501 || (docker logs ui_test && exit 1)
           docker stop ui_test
 
-      # 5. 이미지 푸시
       - name: Push UI image to GHCR
-        run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
+        run: |
+          REPO_LC=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          docker push ghcr.io/${REPO_LC}-ui:${GITHUB_REF_NAME}
