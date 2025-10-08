@@ -1,48 +1,50 @@
 # ============================================================
-# 🚀 CI/CD Pipeline for gogoAiHunters MLOps Project
+# 🧪 CI/CD Manual Validation Workflow
 # ------------------------------------------------------------
-# 트리거:
-#   - main 브랜치 푸시
-#   - 태그(v*) 푸시
-#   - 수동 실행 (workflow_dispatch)
-# 주요 기능:
-#   - FastAPI / Streamlit Docker 빌드 및 헬스체크
-#   - Spotify Secrets 기반 환경 검증
-#   - 빌드 안정성 보장 (배포 전 자동 검증)
+# 목적:
+#   ✅ FastAPI (Backend) 및 Streamlit (Frontend) 컨테이너를 수동으로 빌드/검증
+#   ✅ 로컬 빌드 전 GitHub Actions 환경에서 헬스체크 테스트 수행
+#   ⚙️ 이 워크플로우는 자동으로 실행되지 않습니다.
+#       → Actions 탭의 “Run workflow” 버튼을 눌러 직접 실행하세요.
 # ============================================================
 
-name: CI/CD Pipeline (Auto Validation)
+name: CI/CD Manual Validation (API & UI)
 
+# ------------------------------------------------------------
+# ✅ 트리거 설정: 오직 수동 실행만 허용
+# ------------------------------------------------------------
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
-  workflow_dispatch:
+  workflow_dispatch:   # "Run workflow" 버튼으로 직접 실행
 
+# ------------------------------------------------------------
+# 🌍 공통 환경 변수 설정
+# ------------------------------------------------------------
 env:
   REGISTRY: ghcr.io
-  ORG: gogoaihunter                # ⚠️ 반드시 소문자 유지 (GHCR 규칙)
-  IMAGE_API: mlops-cloud-project-mlops-2-api
-  IMAGE_UI: mlops-cloud-project-mlops-2-ui
+  IMAGE_API: ${{ github.repository }}-api
+  IMAGE_UI: ${{ github.repository }}-ui
 
 permissions:
   contents: read
-  packages: read
 
+# ============================================================
+# 🎵 1️⃣ FastAPI (Backend) Build & Healthcheck
+# ============================================================
 jobs:
-  # ============================================================
-  # 🎵 1️⃣ FastAPI Build & Validation
-  # ============================================================
   build-api:
     name: Validate FastAPI (Backend)
     runs-on: ubuntu-latest
 
     steps:
+      # ------------------------------------------------------
+      # 1️⃣ 코드 체크아웃
+      # ------------------------------------------------------
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------
+      # 2️⃣ .env 파일 생성 (Spotify API 등 시크릿 연결)
+      # ------------------------------------------------------
       - name: 🔧 Create .env file
         run: |
           echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" > .env
@@ -50,30 +52,31 @@ jobs:
           echo "MLFLOW_ADDR=http://mlops_runner:5000" >> .env
           echo "✅ .env file created successfully"
 
+      # ------------------------------------------------------
+      # 3️⃣ FastAPI 도커 빌드 (Dockerfile.api 기준)
+      # ------------------------------------------------------
       - name: 🏗️ Build FastAPI Docker image
         run: |
           docker build -f Dockerfile.api -t api-ci-test:latest .
           echo "✅ FastAPI image build completed"
 
+      # ------------------------------------------------------
+      # 4️⃣ FastAPI 컨테이너 헬스체크 (/health)
+      # ------------------------------------------------------
       - name: 🧠 Run FastAPI Healthcheck
         run: |
           docker run -d -p 8000:8000 --name api_ci api-ci-test:latest
           echo "🕐 Waiting for FastAPI to start..."
           sleep 10
           echo "🔍 Checking /health endpoint..."
-          if curl -fs http://localhost:8000/health; then
-            echo "✅ FastAPI Healthcheck passed"
-          else
-            echo "❌ FastAPI Healthcheck failed"
-            docker logs api_ci
-            exit 1
-          fi
+          curl -f http://localhost:8000/health || (docker logs api_ci && exit 1)
           docker stop api_ci
           docker rm api_ci
+          echo "✅ FastAPI Healthcheck passed"
 
-  # ============================================================
-  # 🖥️ 2️⃣ Streamlit Build & Validation
-  # ============================================================
+# ============================================================
+# 🖥️ 2️⃣ Streamlit (Frontend) Build & Healthcheck
+# ============================================================
   build-ui:
     name: Validate Streamlit (Frontend)
     runs-on: ubuntu-latest
@@ -83,37 +86,37 @@ jobs:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------
+      # 1️⃣ Streamlit 도커 빌드 (Dockerfile.ui 기준)
+      # ------------------------------------------------------
       - name: 🏗️ Build Streamlit Docker image
         run: |
           docker build -f Dockerfile.ui -t ui-ci-test:latest .
           echo "✅ Streamlit image build completed"
 
+      # ------------------------------------------------------
+      # 2️⃣ Streamlit 헬스체크 (서버 기동 확인)
+      # ------------------------------------------------------
       - name: 🧠 Run Streamlit Healthcheck
         run: |
           docker run -d -p 8501:8501 --name ui_ci ui-ci-test:latest
           echo "🕐 Waiting for Streamlit to start..."
-          sleep 12
+          sleep 15
           echo "🔍 Checking Streamlit UI availability..."
-          if curl -fs http://localhost:8501; then
-            echo "✅ Streamlit Healthcheck passed"
-          else
-            echo "❌ Streamlit Healthcheck failed"
-            docker logs ui_ci
-            exit 1
-          fi
+          curl -f http://localhost:8501 || (docker logs ui_ci && exit 1)
           docker stop ui_ci
           docker rm ui_ci
+          echo "✅ Streamlit Healthcheck passed"
 
-  # ============================================================
-  # ✅ 3️⃣ Summary
-  # ============================================================
+# ============================================================
+# ✅ 3️⃣ Summary Job
+# ------------------------------------------------------------
+# 모든 테스트가 성공하면 요약 메시지를 표시합니다.
+# ============================================================
   summary:
-    name: CI/CD Summary
+    name: ✅ Summary (Manual CI Completed)
     runs-on: ubuntu-latest
     needs: [build-api, build-ui]
-
     steps:
-      - name: ✅ CI/CD Completed
-        run: |
-          echo "✅ All builds and healthchecks succeeded successfully!"
-          echo "🎯 FastAPI and Streamlit validated under tag: ${{ github.ref_name }}"
+      - name: ✅ CI Complete
+        run: echo "🎉 All builds and healthchecks succeeded successfully!"
