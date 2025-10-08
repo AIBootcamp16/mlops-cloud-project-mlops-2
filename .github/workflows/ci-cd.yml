@@ -37,7 +37,7 @@ jobs:
       - name: Build and push Docker image (if needed)
         if: env.REBUILD == 'true'
         run: |
-          export IMAGE_TAG=becky77/mlops:${{ github.sha }}
+          IMAGE_TAG="becky77/mlops:${GITHUB_SHA::8}"
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
@@ -55,11 +55,11 @@ jobs:
           script: |
             cd /home/ubuntu/mlops-cloud-project-mlops-2
             if [ "${REBUILD}" == "true" ]; then
-              docker pull becky77/mlops:${{ github.sha }}
-              docker-compose down
-              docker-compose up -d --build
+              docker pull $IMAGE_TAG
+              docker compose down
+              docker compose up -d --build
             else
-              docker-compose restart airflow
+              docker compose restart airflow
             fi
           # script: |
           #   # docker pull $IMAGE_TAG
