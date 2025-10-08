@@ -3,11 +3,10 @@
 # ------------------------------------------------------------
 # 특징:
 #   - python:3.11-slim 기반
+#   - requirements_api.txt 사용
 #   - models / dataset 디렉토리 없을 경우 자동 무시
-#   - .env, requirements.txt 포함
 # ============================================================
 
-# 1️⃣ Base Stage ------------------------------------------------
 FROM python:3.11-slim AS base
 
 # 환경변수 설정
@@ -17,30 +16,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PATH="/root/.local/bin:$PATH"
 
-# 작업 디렉토리 생성
 WORKDIR /app
 
-# 2️⃣ Install Dependencies --------------------------------------
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# 2️⃣ Install dependencies
+COPY requirements_api.txt .
+RUN pip install --no-cache-dir -r requirements_api.txt
 
-# 3️⃣ Copy Project Files ----------------------------------------
+# 3️⃣ Copy project files
 COPY . .
 
-# 4️⃣ Ensure optional folders exist ------------------------------
-# models / dataset 폴더가 존재하지 않으면 빈 디렉토리 생성
+# 4️⃣ Ensure optional folders exist
 RUN mkdir -p /app/models /app/dataset \
  && (test -d "./models" && echo "✅ models found" || echo "⚠️ no models, skipping") \
  && (test -d "./dataset" && echo "✅ dataset found" || echo "⚠️ no dataset, skipping")
 
-# 5️⃣ Healthcheck script ----------------------------------------
-# FastAPI 서버의 /health 엔드포인트로 상태 확인
+# 5️⃣ Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
  CMD curl -f http://localhost:8000/health || exit 1
 
-# 6️⃣ Expose FastAPI Port ---------------------------------------
+# 6️⃣ Expose & Run
 EXPOSE 8000
-
-# 7️⃣ Run Command -----------------------------------------------
-# .env 파일이 있으면 자동 로드 (python-dotenv 사용)
 CMD ["sh", "-c", "uvicorn src.api.api:app --host 0.0.0.0 --port 8000"]
