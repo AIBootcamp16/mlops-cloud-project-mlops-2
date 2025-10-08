@@ -283,3 +283,6 @@ members/*/*.pkl
 logs/
 dataset/raw/spotify_data.csv
 dataset/processed/spotify_data_clean.csv
+logs/
+dataset/raw/*.csv
+dataset/processed/*.csv

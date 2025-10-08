@@ -1,21 +1,12 @@
 # ============================================================
-# 🧠 MLOps Music Recommendation System — Stable Release
-# ------------------------------------------------------------
-# 구성 요소:
-#   🎵 music_recommender_api  : FastAPI 백엔드 (추천 서버)
-#   🖥️ music_recommender_ui   : Streamlit 프론트엔드
-#   🧩 mlops_airflow_web/scheduler : Airflow 관리 UI + 스케줄러
-#   ⚙️ mlops_runner           : MLflow / 학습 파이프라인 실행기
-# ------------------------------------------------------------
-# 모든 컨테이너는 동일한 네트워크(mlops_network)를 공유합니다.
+# 🎧 MLOps Music Recommender System - Unified Docker Compose
 # ============================================================
-
 version: "3.9"
 
 services:
-  # ----------------------------------------------------------
-  # 🎵 FastAPI — 음악 추천 API 서버
-  # ----------------------------------------------------------
+  # -------------------------------
+  # 🎵 FastAPI Backend
+  # -------------------------------
   music_recommender_api:
     build:
       context: .
@@ -26,21 +17,21 @@ services:
     env_file:
       - .env
     volumes:
-      - ./src:/app/src
-      - ./models:/app/models
-      - ./dataset/processed:/app/dataset/processed
-    networks:
-      - mlops_network
+      - ./src:/app/mlops/src
+      - ./models:/app/mlops/models
+      - ./dataset:/app/mlops/dataset
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - mlops_net
 
-  # ----------------------------------------------------------
-  # 🖥️ Streamlit — UI 프론트엔드
-  # ----------------------------------------------------------
+  # -------------------------------
+  # 🖥️ Streamlit UI
+  # -------------------------------
   music_recommender_ui:
     build:
       context: .
@@ -53,73 +44,14 @@ services:
     depends_on:
       - music_recommender_api
     volumes:
-      - ./src/web:/app/web
-    networks:
-      - mlops_network
+      - ./web:/app/web
     restart: always
-
-  # ----------------------------------------------------------
-  # 🧱 Airflow — 웹 UI + 스케줄러
-  # ----------------------------------------------------------
-  mlops_airflow_web:
-    build:
-      context: .
-      dockerfile: Dockerfile.airflow
-    container_name: mlops_airflow_web
-    command: webserver
-    ports:
-      - "8080:8080"
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=sqlite:////usr/local/airflow/airflow.db
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    volumes:
-      - ./dags:/usr/local/airflow/dags
-      - ./logs:/usr/local/airflow/logs
     networks:
-      - mlops_network
-    restart: always
+      - mlops_net
 
-  mlops_airflow_scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.airflow
-    container_name: mlops_airflow_scheduler
-    command: scheduler
-    depends_on:
-      - mlops_airflow_web
-    volumes:
-      - ./dags:/usr/local/airflow/dags
-      - ./logs:/usr/local/airflow/logs
-    networks:
-      - mlops_network
-    restart: always
-
-  # ----------------------------------------------------------
-  # ⚙️ Runner — MLflow / 학습 파이프라인 (데이터 재생성 없음)
-  # ----------------------------------------------------------
-  mlops_runner:
-    build:
-      context: .
-      dockerfile: Dockerfile.mlflow
-    container_name: mlops_runner
-    env_file:
-      - .env
-    volumes:
-      - ./src:/app/src
-      - ./models:/app/models
-      - ./dataset:/app/dataset
-    networks:
-      - mlops_network
-    tty: true
-    restart: on-failure
-    # ❌ 자동 데이터 재생성 제거 (build_dataset.py 실행 없음)
-    # 필요시 수동 실행:
-    # docker exec -it mlops_runner python src/data/build_dataset.py
-
-# ------------------------------------------------------------
-# 🌐 공통 네트워크
-# ------------------------------------------------------------
+# -------------------------------
+# 🌐 Network
+# -------------------------------
 networks:
-  mlops_network:
+  mlops_net:
     driver: bridge
