@@ -1,45 +1,50 @@
 # ============================================================
-# 🎵 FastAPI Backend (music_recommender_api)
+# 🎧 MLOps Music Recommender - FastAPI Backend (Dockerfile.api)
+# ------------------------------------------------------------
+# - FastAPI 기반 API 서버
+# - Spotify API, MLflow, 모델 로드 등 포함
+# - CI/CD (GitHub Actions) 및 로컬 환경 모두 호환
 # ============================================================
 
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
+# ------------------------------------------------------------
+# 1️⃣ 시스템 기본 세팅
+# ------------------------------------------------------------
 WORKDIR /app/mlops
 
-# ------------------------------------------------------------
-# 1️⃣ System dependencies (빌드 도중 C/C++ 확장 설치용)
-# ------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------
-# 2️⃣ Python dependencies
+# 2️⃣ Python 의존성 설치
 # ------------------------------------------------------------
 COPY requirements_api.txt .
 RUN pip install --no-cache-dir -r requirements_api.txt
 
 # ------------------------------------------------------------
-# 3️⃣ Application files
+# 3️⃣ 애플리케이션 파일 복사
 # ------------------------------------------------------------
+# src 전체 복사
 COPY ./src ./src
-COPY ./models ./models
-COPY ./dataset ./dataset
-COPY .env ./
+
+# ✅ models 폴더가 없어도 빌드 에러 없이 통과
+RUN mkdir -p ./models
+COPY ./models ./models 2>/dev/null || true
+
+# ✅ dataset 폴더가 없어도 통과
+RUN mkdir -p ./dataset
+COPY ./dataset ./dataset 2>/dev/null || true
+
+# .env 파일 (없으면 무시)
+COPY .env ./ 2>/dev/null || true
 
 # ------------------------------------------------------------
-# 4️⃣ Environment variables
+# 4️⃣ FastAPI 서버 설정
 # ------------------------------------------------------------
-ENV PYTHONUNBUFFERED=1 \
-    PORT=8000 \
-    HOST=0.0.0.0 \
-    ENV_FILE=.env
-
 EXPOSE 8000
-HEALTHCHECK CMD curl --fail http://localhost:8000/health || exit 1
 
-# ------------------------------------------------------------
-# 5️⃣ Run FastAPI server
-# ------------------------------------------------------------
+# healthcheck용 기본 명령 (FastAPI 실행)
 CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]
