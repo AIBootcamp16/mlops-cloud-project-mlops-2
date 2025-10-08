@@ -2,7 +2,7 @@
 # 🎧 MLOps Music Recommender - FastAPI Backend (Dockerfile.api)
 # ------------------------------------------------------------
 # - FastAPI 기반 API 서버
-# - Spotify API, MLflow, 모델 로드 등 포함
+# - Spotify API, MLflow, 모델 로드 포함
 # - CI/CD (GitHub Actions) 및 로컬 환경 모두 호환
 # ============================================================
 
@@ -27,24 +27,22 @@ RUN pip install --no-cache-dir -r requirements_api.txt
 # ------------------------------------------------------------
 # 3️⃣ 애플리케이션 파일 복사
 # ------------------------------------------------------------
-# src 전체 복사
 COPY ./src ./src
 
-# ✅ models 폴더가 없어도 빌드 에러 없이 통과
+# ✅ models 폴더가 있을 때만 복사
 RUN mkdir -p ./models
-COPY ./models ./models 2>/dev/null || true
+RUN [ -d "./models" ] && cp -r ./models ./models || echo "⚠️ no models folder found, skipping"
 
-# ✅ dataset 폴더가 없어도 통과
+# ✅ dataset 폴더가 있을 때만 복사
 RUN mkdir -p ./dataset
-COPY ./dataset ./dataset 2>/dev/null || true
+RUN [ -d "./dataset" ] && cp -r ./dataset ./dataset || echo "⚠️ no dataset folder found, skipping"
 
-# .env 파일 (없으면 무시)
-COPY .env ./ 2>/dev/null || true
+# ✅ .env 파일이 있을 때만 복사
+RUN [ -f ".env" ] && cp .env ./ || echo "⚠️ no .env file found, skipping"
 
 # ------------------------------------------------------------
 # 4️⃣ FastAPI 서버 설정
 # ------------------------------------------------------------
 EXPOSE 8000
 
-# healthcheck용 기본 명령 (FastAPI 실행)
 CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]
