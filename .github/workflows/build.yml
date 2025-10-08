@@ -18,8 +18,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_API: ${{ github.repository }}-api
-  IMAGE_UI: ${{ github.repository }}-ui
+  IMAGE_API: ${{ github.repository_owner | toLowerCase }}/$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')-api
+  IMAGE_UI: ${{ github.repository_owner | toLowerCase }}/$(echo ${{ github.event.repository.name }} | tr '[:upper:]' '[:lower:]')-ui
 
 permissions:
   contents: read
