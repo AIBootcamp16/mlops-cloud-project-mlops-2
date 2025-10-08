@@ -1,31 +1,40 @@
 # ============================================================
-# 🐳 FastAPI Backend Dockerfile (for GHCR)
+# 🐍 FastAPI (Backend) Dockerfile
+# ------------------------------------------------------------
+# 목적:
+#   - FastAPI 서버 컨테이너 빌드
+#   - .env.safe를 통해 빌드 시 .env 누락 오류 방지
 # ============================================================
 
+# 1️⃣ Base image
 FROM python:3.11-slim AS base
 
+# 2️⃣ Working directory
 WORKDIR /app/mlops
 
-# 필수 패키지 설치
+# 3️⃣ System dependencies 설치
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl && rm -rf /var/lib/apt/lists/*
+    build-essential curl \
+ && rm -rf /var/lib/apt/lists/*
 
-# Python 의존성 복사 및 설치
+# 4️⃣ Python requirements 복사 및 설치
 COPY requirements_api.txt .
 RUN pip install --no-cache-dir -r requirements_api.txt
 
-# 프로젝트 코드 복사
+# 5️⃣ 소스 코드 복사
 COPY ./src ./src
 
-# 모델 및 데이터 디렉토리 생성 (없을 경우 대비)
-RUN mkdir -p ./models ./dataset/processed
+# 6️⃣ 모델 / 데이터 디렉터리 생성 (없을 경우 대비)
+RUN mkdir -p ./models ./dataset
 
-# 선택적 파일 복사 (없어도 통과)
-COPY ./models ./models 2>/dev/null || true
-COPY ./dataset ./dataset 2>/dev/null || true
-COPY .env ./ 2>/dev/null || true
+# 7️⃣ 모델 / 데이터 복사 (없으면 무시)
+COPY ./models ./models
+COPY ./dataset ./dataset
 
-# FastAPI 포트
+# 8️⃣ 안전한 .env 설정 복사
+#     ✅ .env.safe를 .env로 복사하여 CI 환경에서도 빌드 오류 방지
+COPY .env.safe .env
+
+# 9️⃣ FastAPI 실행 (Uvicorn)
 EXPOSE 8000
-
-CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]
