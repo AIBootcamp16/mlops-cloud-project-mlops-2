@@ -1,60 +1,46 @@
-# =========================================================
-# 🖥️ Streamlit Frontend (music_recommender_ui)
-# ---------------------------------------------------------
-# 목적:
-#  - FastAPI 백엔드로부터 데이터 수신 및 시각화
-#  - 빌드 캐시 효율 & 이미지 크기 최소화
-# =========================================================
+# ============================================================
+# 🎨 Streamlit Frontend - Optimized for Lightweight Build
+# ------------------------------------------------------------
+# - Builder 단계: 의존성 설치
+# - Runtime 단계: Streamlit 앱 실행
+# - CI/CD 환경에서 .env 파일이 없어도 안전하게 통과
+# ============================================================
 
-
-# =========================================================
-# 🧱 1️⃣ Builder Stage - Dependencies Installation
-# ---------------------------------------------------------
-# 별도 레이어에서 Python 패키지를 설치하여 캐시 재사용 극대화
-# =========================================================
+# ---------- Builder Stage ----------
 FROM python:3.10-slim AS builder
 
+# 작업 디렉토리 생성
 WORKDIR /install
 
-# 🧩 필수 패키지만 설치 (curl for healthcheck/debug)
+# 의존성 설치에 필요한 최소 패키지
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl && rm -rf /var/lib/apt/lists/*
 
-# 📦 Streamlit 의존성 설치
+# Streamlit 의존성 복사 및 설치
 COPY requirements_ui.txt .
 RUN pip install --prefix=/install --no-cache-dir -r requirements_ui.txt
 
 
-# =========================================================
-# 🚀 2️⃣ Runtime Stage - Final Lightweight Image
-# ---------------------------------------------------------
-# Builder에서 설치된 패키지 레이어만 복사 (≈400MB → 150MB로 감소)
-# =========================================================
+# ---------- Runtime Stage ----------
 FROM python:3.10-slim
 
-# 💼 작업 디렉토리 설정
+# 앱 실행 경로
 WORKDIR /app
 
-# 🔁 Builder에서 설치된 패키지 복사
+# Builder에서 설치한 패키지 복사
 COPY --from=builder /install /usr/local
 
-# 📂 애플리케이션 파일 복사
+# 📂 앱 관련 파일 복사
 COPY web ./web
-COPY .env ./.env
 
-# 🧾 환경 변수
-ENV PYTHONUNBUFFERED=1 \
-    STREAMLIT_SERVER_PORT=8501 \
-    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
-    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+# ✅ .env 파일은 선택적으로 존재 (없으면 무시)
+#    - 로컬 실행 시: 실제 .env 사용
+#    - CI/CD 환경: .env가 없어도 빌드 실패 없이 통과
+RUN test -f .env && echo "✅ Found .env file" || echo "⚠️ No .env found, skipping copy"
+COPY .env ./.env || true
 
-# 🔥 Streamlit 기본 포트
+# Streamlit 포트
 EXPOSE 8501
 
-# ✅ Healthcheck (선택 사항)
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health || exit 1
-
-# ▶️ Streamlit 실행
-CMD ["streamlit", "run", "web/streamlit_app.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0"]
+# 실행 명령
+CMD ["streamlit", "run", "web/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
