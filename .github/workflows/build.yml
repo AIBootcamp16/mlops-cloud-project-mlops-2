@@ -21,7 +21,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  ORG: gogoaihunter              # ⚠️ 소문자 유지 (GHCR은 대문자 허용 안 함)
+  ORG: gogoaihunter                      # ⚠️ 반드시 소문자 (GHCR 제한)
   IMAGE_API: mlops-cloud-project-mlops-2-api
   IMAGE_UI: mlops-cloud-project-mlops-2-ui
 
@@ -44,7 +44,7 @@ jobs:
       - name: 🧰 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🧩 Create .env file
+      - name: 🧩 Create temporary .env file
         run: |
           echo "MLFLOW_ADDR=http://mlops_runner:5000" > .env
           echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" >> .env
@@ -71,15 +71,9 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
           echo "🧠 Waiting for FastAPI to start..."
           sleep 15
-          if curl -f http://localhost:8000/health; then
-            echo "✅ FastAPI Healthcheck Passed"
-          else
-            echo "❌ FastAPI Healthcheck Failed"
-            docker logs api_test
-            exit 1
-          fi
-          docker stop api_test
-          docker rm api_test
+          curl -f http://localhost:8000/health || (docker logs api_test && exit 1)
+          docker stop api_test && docker rm api_test
+          echo "✅ FastAPI Healthcheck Passed"
 
       - name: 📦 Push API image to GHCR
         run: |
@@ -120,16 +114,10 @@ jobs:
           docker run -d -p 8501:8501 --name ui_test \
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
           echo "🧠 Waiting for Streamlit UI to start..."
-          sleep 15
-          if curl -f http://localhost:8501; then
-            echo "✅ Streamlit Healthcheck Passed"
-          else
-            echo "❌ Streamlit Healthcheck Failed"
-            docker logs ui_test
-            exit 1
-          fi
-          docker stop ui_test
-          docker rm ui_test
+          sleep 20
+          curl -f http://localhost:8501 || (docker logs ui_test && exit 1)
+          docker stop ui_test && docker rm ui_test
+          echo "✅ Streamlit Healthcheck Passed"
 
       - name: 📦 Push UI image to GHCR
         run: |
