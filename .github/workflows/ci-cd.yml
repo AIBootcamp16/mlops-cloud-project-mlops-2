@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   # pull_request:
-  #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
+  #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI) - fork repo
   pull_request_target:
     branches: [ "main" ]
   push:
