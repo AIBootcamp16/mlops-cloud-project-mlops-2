@@ -12,7 +12,7 @@ jobs:
   # -------------------------------
   ci-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -49,7 +49,7 @@ jobs:
           python -m compileall .
           echo "✅ Code syntax check passed."
 
-      # Slack 알림
+      # Slack PR 알림
       - name: Notify Slack about PR
         if: always()
         uses: slackapi/slack-github-action@v1.27.0
@@ -77,7 +77,7 @@ jobs:
   # CD: Merge 후 EC2에 배포
   # -------------------------------
   cd-deploy:
-    if: github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
     runs-on: ubuntu-latest
 
     steps:
