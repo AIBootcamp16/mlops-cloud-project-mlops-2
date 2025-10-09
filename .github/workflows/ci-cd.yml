@@ -15,7 +15,6 @@ jobs:
   ci-test:
     runs-on: ubuntu-latest
     # if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
-    # if: github.event_name == 'pull_request_target' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
     # if: github.event_name == 'pull_request'
     if: github.event_name == 'pull_request_target'
     steps:
@@ -46,7 +45,13 @@ jobs:
         with:
           payload: |
             {
-              "text": ":rocket: *새로운 Pull Request가 있습니다!*\nRepo: `${{ github.repository }}`\nAuthor: `${{ github.actor }}`\n<${{ github.event.pull_request.html_url }}|View PR>"
+              "text": ":sparkles: *새로운 Pull Request가 생성되었습니다!*\n\n" +
+                      "*Repository:* `${{ github.repository }}`\n" +
+                      "*작성자:* `${{ github.actor }}`\n" +
+                      "*제목:* `${{ github.event.pull_request.title }}`\n" +
+                      "*내용:* `${{ github.event.pull_request.body || 'No description provided.' }}`\n" +
+                      "*생성 시각:* `${{ github.event.pull_request.created_at }}`\n\n" +
+                      "<${{ github.event.pull_request.html_url }}|🔗 Pull Request 보러가기>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -130,14 +135,21 @@ jobs:
             fi
             echo "✅ Deployment complete on EC2"
 
-      # ✅ Slack 알림 (배포 완료 시)
       - name: Notify Slack - Deployment Complete
         if: always()
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
             {
-              "text": ":tada: *배포 완료!*\nBranch: `${{ github.ref_name }}`\nRepository: `${{ github.repository }}`\nDeployed To: `EC2 - ${{ secrets.EC2_HOST }}`\nStatus: `${{ job.status }}`\nCommit: `${{ github.sha }}`\nAuthor: `${{ github.actor }}`\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|Go to commit>"
+              "text": ":rocket: *배포 완료 알림*\n\n" +
+                      "*Repository:* `${{ github.repository }}`\n" +
+                      "*배포 브랜치:* `${{ github.ref_name }}`\n" +
+                      "*병합된 PR:* `${{ github.event.head_commit.message }}`\n" +
+                      "*병합자:* `${{ github.actor }}`\n" +
+                      "*배포 시각:* `${{ github.event.head_commit.timestamp }}`\n" +
+                      "*커밋:* `${{ github.sha }}`\n" +
+                      "*배포 대상:* `EC2 - ${{ secrets.EC2_HOST }}`\n\n" +
+                      "<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|🔗 커밋 보러가기>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
