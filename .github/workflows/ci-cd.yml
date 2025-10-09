@@ -4,7 +4,7 @@ on:
   # pull_request:
   #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI) - fork repo
   pull_request_target:
-    branches: [ "main" ]    # PR 생성 시 #
+    branches: [ "main" ]    # PR 생성 시 ##
   push:
     branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
