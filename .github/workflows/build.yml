@@ -16,8 +16,9 @@ on:
   push:
     branches:
       - main
+      - stable-local-v1   # 태그가 여기서 생길 수도 있음
     tags:
-      - "v*"
+      - "v*"              # 태그 푸시만으로도 빌드 트리거
 
 env:
   REGISTRY: ghcr.io
