@@ -38,12 +38,18 @@ jobs:
           python -m compileall .
           echo "✅ Code syntax check passed."
 
+      - name: Convert PR created_at to KST
+        run: |
+          CREATED_AT_UTC="${{ github.event.pull_request.created_at }}"
+          CREATED_AT_KST=$(date -d "$CREATED_AT_UTC +9 hours" +"%Y-%m-%d %H:%M:%S")
+          echo "CREATED_AT_KST=$CREATED_AT_KST" >> $GITHUB_ENV
+
       - name: Send Slack notification (safe for fork PRs)
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
             {
-              "text": ":sparkles: *새로운 Pull Request가 생성되었습니다!*\n\n*Repository:* ${{ github.repository }}\n*작성자:* ${{ github.actor }}\n*제목:* ${{ github.event.pull_request.title }}\n*내용:* ${{ github.event.pull_request.body || 'No description provided.' }}\n*생성 시각:* ${{ github.event.pull_request.created_at }}\n\n<${{ github.event.pull_request.html_url }}|🔗 Pull Request 보러가기>"
+              "text": ":sparkles: *새로운 Pull Request가 생성되었습니다!*\n\n*Repository:* ${{ github.repository }}\n*작성자:* ${{ github.actor }}\n*제목:* ${{ github.event.pull_request.title }}\n*내용:* ${{ github.event.pull_request.body || 'No description provided.' }}\n*생성 시각 (KST):* ${{ env.CREATED_AT_KST }}\n\n<${{ github.event.pull_request.html_url }}|🔗 Pull Request 보러가기>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -105,13 +111,19 @@ jobs:
             fi
             echo "✅ Deployment complete on EC2"
 
+      - name: Convert deployment timestamp to KST
+        run: |
+          DEPLOY_AT_UTC="${{ github.event.head_commit.timestamp }}"
+          DEPLOY_AT_KST=$(date -d "$DEPLOY_AT_UTC +9 hours" +"%Y-%m-%d %H:%M:%S")
+          echo "DEPLOY_AT_KST=$DEPLOY_AT_KST" >> $GITHUB_ENV
+
       - name: Notify Slack - Deployment Complete
         if: always()
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
             {
-              "text": ":rocket: *배포 완료 알림*\n\n*Repository:* ${{ github.repository }}\n*배포 브랜치:* ${{ github.ref_name }}\n*병합된 PR:* ${{ github.event.head_commit.message }}\n*병합자:* ${{ github.actor }}\n*배포 시각:* ${{ github.event.head_commit.timestamp }}\n*커밋:* ${{ github.sha }}\n*배포 대상:* EC2 - ${{ secrets.EC2_HOST }}\n\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|🔗 커밋 보러가기>"
+              "text": ":rocket: *배포 완료 알림*\n\n*Repository:* ${{ github.repository }}\n*배포 브랜치:* ${{ github.ref_name }}\n*병합된 PR:* ${{ github.event.head_commit.message }}\n*병합자:* ${{ github.actor }}\n*배포 시각 (KST):* ${{ env.DEPLOY_AT_KST }}\n*커밋:* ${{ github.sha }}\n*배포 대상:* EC2 - ${{ secrets.EC2_HOST }}\n\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|🔗 커밋 보러가기>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
