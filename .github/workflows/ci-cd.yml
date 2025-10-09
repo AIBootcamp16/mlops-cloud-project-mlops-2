@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  # pull_request:
-  #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
-  pull_request_target:
-    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
+  # pull_request_target:
+  #   branches: [ "main" ]
   push:
     branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
@@ -15,8 +15,8 @@ jobs:
   ci-test:
     runs-on: ubuntu-latest
     # if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
-    if: github.event_name == 'pull_request_target' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
-    # if: github.event_name == 'pull_request_target'
+    # if: github.event_name == 'pull_request_target' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -34,28 +34,16 @@ jobs:
             echo "requirements.txt unchanged, skipping install"
           fi
 
-      # 캐시 key는 requirements.txt의 해시를 기준으로 설정
-      # - name: Cache pip dependencies
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.cache/pip
-      #     key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-pip-
-
-      # - name: Install dependencies (skip if unchanged)
-      #   run: |
-      #     pip install -r requirements.txt
-
       - name: Run lint and basic tests
         run: |
           echo "✅ Running code validation..."
           python -m compileall .
           echo "✅ Code syntax check passed."
 
-      # Slack PR 알림
-      - name: Notify Slack about PR
-        if: always()
+      # Slack PR 알림 (각자 secret에 SLACK_WEBHOOK_URL 설정 필요)
+      - name: Notify Slack about PR (only if secret exists)
+        # if: always()
+        if: ${{ env.SLACK_SECRET_EXISTS == 'true' }} && github.repository != 'AIBootcamp16/mlops-cloud-project-mlops-2'
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
