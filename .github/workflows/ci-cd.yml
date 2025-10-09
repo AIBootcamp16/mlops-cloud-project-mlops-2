@@ -10,7 +10,7 @@ on:
 
 jobs:
   # -------------------------------
-  # CI: Pull Request 시 코드 검증
+  # CI: Pull Request 시 코드 검증, slack
   # -------------------------------
   ci-test:
     runs-on: ubuntu-latest
@@ -78,7 +78,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # -------------------------------
-  # CD: Merge 후 EC2에 배포
+  # CD: Merge 후 EC2에 배포, slack
   # -------------------------------
   cd-deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
