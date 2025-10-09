@@ -49,7 +49,7 @@ jobs:
           python -m compileall .
           echo "✅ Code syntax check passed."
 
-      # Slack 알림
+      # Slack PR 알림
       - name: Notify Slack about PR
         if: always()
         uses: slackapi/slack-github-action@v1.27.0
