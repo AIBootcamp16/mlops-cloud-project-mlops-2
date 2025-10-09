@@ -2,61 +2,52 @@
 set -e
 
 # ============================================================
-# 🚀 MLOps Cloud Project - GHCR Image Runner
+# 🚀 run_from_ghcr.sh (Auto latest GHCR version)
 # ------------------------------------------------------------
-# 버전:
-#   - v1.0.25 기준 (태그 변경 시 VERSION 변수만 수정)
 # 기능:
-#   - GHCR에서 FastAPI / Streamlit 이미지 Pull
-#   - 로컬 포트 매핑 및 실행
+#   - GHCR에서 최신 태그 자동 감지
+#   - FastAPI / Streamlit 컨테이너 실행
 # ============================================================
 
-# ===== 기본 설정 =====
-VERSION="v1.0.25"
 REGISTRY="ghcr.io/gogoaihunter"
 IMAGE_API="mlops-cloud-project-mlops-2-api"
 IMAGE_UI="mlops-cloud-project-mlops-2-ui"
 
-# ===== 사전 확인 =====
-echo "🔎 Checking Docker login to GHCR..."
+# 1️⃣ 최신 버전 자동 감지
+echo "🔍 GHCR에서 최신 버전 확인 중..."
+VERSION=$(curl -s "https://ghcr.io/v2/gogoaihunter/$IMAGE_API/tags/list" | \
+           grep -oE '"v[0-9]+\.[0-9]+\.[0-9]+"' | tail -1 | tr -d '"')
+
+if [[ -z "$VERSION" ]]; then
+  echo "❌ 최신 버전 정보를 가져오지 못했습니다. (GHCR 로그인 필요?)"
+  exit 1
+fi
+
+echo "✅ 최신 버전: $VERSION"
+
+# 2️⃣ GHCR 로그인 확인
 if ! docker info | grep -q "ghcr.io"; then
   echo "⚠️  GHCR 로그인 필요:"
   echo "👉 docker login ghcr.io -u <your-username> -p <your-token>"
   exit 1
 fi
 
-# ===== FastAPI 서버 =====
-echo "🐍 Pulling FastAPI image..."
+# 3️⃣ FastAPI 컨테이너
+echo "🐍 FastAPI 이미지 실행 중..."
 docker pull $REGISTRY/$IMAGE_API:$VERSION
+docker rm -f music_recommender_api 2>/dev/null || true
+docker run -d --name music_recommender_api -p 8000:8000 --env-file .env $REGISTRY/$IMAGE_API:$VERSION
 
-echo "🚀 Starting FastAPI container..."
-docker run -d \
-  --name music_recommender_api \
-  -p 8000:8000 \
-  --env-file .env \
-  $REGISTRY/$IMAGE_API:$VERSION
-
-echo "⏳ Waiting for FastAPI to initialize..."
-sleep 10
-curl -s http://localhost:8000/health || echo "⚠️ API health endpoint not responding yet"
-
-# ===== Streamlit UI =====
-echo "🎨 Pulling Streamlit UI image..."
+# 4️⃣ Streamlit 컨테이너
+echo "🎨 Streamlit UI 이미지 실행 중..."
 docker pull $REGISTRY/$IMAGE_UI:$VERSION
+docker rm -f music_recommender_ui 2>/dev/null || true
+docker run -d --name music_recommender_ui -p 8501:8501 --env-file .env $REGISTRY/$IMAGE_UI:$VERSION
 
-echo "🚀 Starting Streamlit container..."
-docker run -d \
-  --name music_recommender_ui \
-  -p 8501:8501 \
-  --env-file .env \
-  $REGISTRY/$IMAGE_UI:$VERSION
-
-# ===== 완료 메시지 =====
+# 5️⃣ 완료 메시지
 echo ""
-echo "✅ All containers are up!"
+echo "✅ 최신 버전($VERSION) 컨테이너 실행 완료!"
 echo "---------------------------------------------"
 echo "FastAPI:   http://localhost:8000/docs"
 echo "Streamlit: http://localhost:8501"
 echo "---------------------------------------------"
-echo "🧹 To stop and remove containers:"
-echo "    docker stop music_recommender_api music_recommender_ui && docker rm music_recommender_api music_recommender_ui"
