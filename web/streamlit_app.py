@@ -156,7 +156,7 @@ with tab1:
     if isinstance(df_search, pd.DataFrame) and not df_search.empty:
         st.subheader("검색 결과")
 
-        display_cols = [c for c in ["track_name", "artist_name"] if c in df_search.columns]
+        display_cols = [c for c in ["image_url", "track_name", "artist_name", ] if c in df_search.columns]
         if not display_cols:
             display_cols = [c for c in df_search.columns if c != "track_id"]
 
@@ -176,7 +176,15 @@ with tab1:
                     help="추천을 생성할 곡을 한 곡만 선택하세요",
                     default=False,
                     required=False,
-                )
+                    width="small"
+                ),
+                "image_url": st.column_config.ImageColumn(
+                    "앨범",
+                    width="small",
+                    help="Spotify 앨범 커버 이미지",
+                ),
+                "track_name": "노래 제목",
+                "artist_name": "가수 이름",
             },
             key="search_table",
         )
@@ -213,9 +221,31 @@ with tab1:
                     st.info("추천 결과가 없습니다.")
                 else:
                     st.success(f"총 {len(df_rec)}건의 추천을 생성했습니다. ({elapsed:.3f}초)")
-                    prefer = [c for c in ["rank", "track_name", "artist_name", "distance"] if c in df_rec.columns]
+                    prefer = [c for c in ["rank", "image_url", "track_name", "artist_name", "distance"] if c in df_rec.columns]
                     other = [c for c in df_rec.columns if c not in prefer and c != "track_id"]
-                    st.dataframe(df_rec[prefer + other], use_container_width=True, hide_index=True)
+                    
+                    # st.dataframe(df_rec[prefer + other], use_container_width=True, hide_index=True)
+                    df_rec = df_rec.sort_values("rank", ascending=True)
+
+                    st.data_editor(
+                        df_rec[[c for c in (prefer + other) if c in df_rec.columns]], 
+                        use_container_width=True, 
+                        hide_index=True,
+                        disabled=True, # 추천 결과는 수정 불가
+                        column_config={
+                            "rank": "순위",
+                            "image_url": st.column_config.ImageColumn(
+                                "앨범",
+                                width="small",
+                                help="Spotify 앨범 커버 이미지"
+                            ),
+                            "track_name": "노래 제목",
+                            "artist_name": "가수 이름",
+                            "distance": "유사도(거리)",
+                            "y_pred": "재순위 점수",
+                        }
+                    )
+
             except requests.exceptions.ConnectionError:
                 st.error(f"API에 연결할 수 없습니다: {API_BASE}")
             except requests.exceptions.HTTPError as e:
@@ -306,10 +336,10 @@ with tab2:
         show = logs[["ts", "seed_ids_list", "elapsed_sec"]].copy()
         show.rename(columns={
             "ts": "시각",
-            "seed_ids_list": "시드 곡명",
+            "seed_ids_list": "곡명",
             "elapsed_sec": "지연(초)",
         }, inplace=True)
-        show["시드 곡명"] = show["시드 곡명"].apply(seed_names)
+        show["곡명"] = show["곡명"].apply(seed_names)
         st.dataframe(show.head(30), use_container_width=True, hide_index=True)
 
         # ======================

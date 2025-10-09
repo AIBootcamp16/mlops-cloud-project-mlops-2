@@ -229,6 +229,11 @@ class FAISSRecommender():
         # 결과 DataFrame 생성
         results = []
         for i, r_idx in enumerate(indices[0]):
+
+            # 시드 곡은 제외
+            if r_idx == idx:
+                continue
+
             results.append({
                 "rank": i + 1,
                 "track_id": self.df.loc[r_idx, "track_id"],
@@ -329,11 +334,6 @@ class FAISSRecommender():
     # 모델 불러오기
     @classmethod
     def MLFLOWload(cls):
-        os.environ["MLFLOW_ADDR"] = "http://114.203.195.166:5000"
-        os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://114.203.195.166:9000"
-        os.environ["AWS_ACCESS_KEY_ID"] = "admin"
-        os.environ["AWS_SECRET_ACCESS_KEY"] = "admin1234"
-
         mlflow_addr = os.environ.get("MLFLOW_ADDR")
         
         mlflow.set_tracking_uri(f"{mlflow_addr}")
@@ -511,11 +511,6 @@ class LGBMRecommender:
     @classmethod
     def MLFLOW_load(cls) -> "LGBMRecommender":
         model_name = 'spotipy_LGBM'
-
-        os.environ["MLFLOW_ADDR"] = "http://114.203.195.166:5000"
-        os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://114.203.195.166:9000"
-        os.environ["AWS_ACCESS_KEY_ID"] = "admin"
-        os.environ["AWS_SECRET_ACCESS_KEY"] = "admin1234"
 
         mlflow_addr = os.environ.get("MLFLOW_ADDR")
         
