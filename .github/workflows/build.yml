@@ -3,11 +3,7 @@
 # ------------------------------------------------------------
 # 트리거:
 #   - main 브랜치 푸시 시 자동 빌드
-#   - 태그(v*) 푸시 시 GHCR에 Docker 이미지 업로드
-# 주요 기능:
-#   - FastAPI / Streamlit Docker 이미지 빌드 및 테스트
-#   - GHCR (GitHub Container Registry)에 업로드
-#   - Spotify API Secrets 자동 주입
+#   - 브랜치 상관없이 v* 태그 푸시 시 GHCR 빌드 실행
 # ============================================================
 
 name: Build and Push to gogoAiHunters GHCR
@@ -16,9 +12,10 @@ on:
   push:
     branches:
       - main
-      - stable-local-v1   # 태그가 여기서 생길 수도 있음
+      - stable-local-v1   # ← 로컬 브랜치에서 푸시해도 인식
     tags:
-      - "v*"              # 태그 푸시만으로도 빌드 트리거
+      - "v*"
+  workflow_dispatch:       # 수동 실행 버튼도 허용
 
 env:
   REGISTRY: ghcr.io
@@ -41,23 +38,14 @@ jobs:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ 조직명 자동 소문자 변환 (필수)
       - name: 🔡 Normalize organization name
         id: org
         run: |
           ORG_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "ORG_LOWER=$ORG_LOWER" >> $GITHUB_ENV
-          echo "✅ Normalized organization name: $ORG_LOWER"
 
       - name: 🧰 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: 🧩 Create temporary .env file
-        run: |
-          echo "MLFLOW_ADDR=http://mlops_runner:5000" > .env
-          echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" >> .env
-          echo "SPOTIPY_CLIENT_SECRET=${{ secrets.SPOTIPY_CLIENT_SECRET }}" >> .env
-          echo "✅ .env file created successfully."
 
       - name: 🔑 Log in to GHCR
         uses: docker/login-action@v3
@@ -66,27 +54,29 @@ jobs:
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: 🧩 Create temporary .env file
+        run: |
+          echo "MLFLOW_ADDR=http://mlops_runner:5000" > .env
+          echo "SPOTIPY_CLIENT_ID=${{ secrets.SPOTIPY_CLIENT_ID }}" >> .env
+          echo "SPOTIPY_CLIENT_SECRET=${{ secrets.SPOTIPY_CLIENT_SECRET }}" >> .env
+
       - name: 🏗️ Build FastAPI Docker image
         run: |
-          docker build \
-            -f Dockerfile.api \
+          docker build -f Dockerfile.api \
             -t ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ env.IMAGE_API }}:${{ github.ref_name }} .
           echo "✅ FastAPI image built successfully."
 
-      - name: ✅ Healthcheck FastAPI
+      - name: 🧠 Run Healthcheck (FastAPI)
         run: |
           docker run -d -p 8000:8000 --name api_test \
             ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
-          echo "🧠 Waiting for FastAPI to start..."
           sleep 15
           curl -f http://localhost:8000/health || (docker logs api_test && exit 1)
           docker stop api_test && docker rm api_test
-          echo "✅ FastAPI Healthcheck Passed"
 
-      - name: 📦 Push API image to GHCR
+      - name: 📦 Push FastAPI Image
         run: |
           docker push ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ env.IMAGE_API }}:${{ github.ref_name }}
-          echo "🚀 FastAPI image pushed to GHCR."
 
   # ============================================================
   # 🖥️ 2️⃣ Streamlit (Frontend)
@@ -100,13 +90,11 @@ jobs:
       - name: 🧾 Checkout repository
         uses: actions/checkout@v4
 
-      # ✅ 동일하게 소문자 org 사용
       - name: 🔡 Normalize organization name
         id: org
         run: |
           ORG_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "ORG_LOWER=$ORG_LOWER" >> $GITHUB_ENV
-          echo "✅ Normalized organization name: $ORG_LOWER"
 
       - name: 🧰 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -118,24 +106,31 @@ jobs:
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      - name: 🏗️ Build Streamlit Docker image
+      - name: 🏗️ Build Streamlit UI Image
         run: |
-          docker build \
-            -f Dockerfile.ui \
+          docker build -f Dockerfile.ui \
             -t ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ env.IMAGE_UI }}:${{ github.ref_name }} .
           echo "✅ Streamlit image built successfully."
 
-      - name: ✅ Healthcheck Streamlit UI
+      - name: 🧠 Run Healthcheck (Streamlit)
         run: |
           docker run -d -p 8501:8501 --name ui_test \
             ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
-          echo "🧠 Waiting for Streamlit UI to start..."
           sleep 20
           curl -f http://localhost:8501 || (docker logs ui_test && exit 1)
           docker stop ui_test && docker rm ui_test
-          echo "✅ Streamlit Healthcheck Passed"
 
-      - name: 📦 Push UI image to GHCR
+      - name: 📦 Push Streamlit UI Image
         run: |
           docker push ${{ env.REGISTRY }}/${{ env.ORG_LOWER }}/${{ env.IMAGE_UI }}:${{ github.ref_name }}
-          echo "🚀 Streamlit image pushed to GHCR."
+
+  # ============================================================
+  # ✅ 3️⃣ Summary
+  # ============================================================
+  summary:
+    name: ✅ CI/CD Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-api, build-ui]
+    steps:
+      - name: 🎉 Build Complete
+        run: echo "✅ All images built and pushed successfully."
