@@ -1,14 +1,23 @@
-version: "3.9"
+# Docker Compose의 최신 버전(v2, docker compose 명령어를 사용하는 버전)에서는 
+# docker-compose.yml 파일 내에 version: "3.x"와 같은 필드를 명시적으로 지정할 필요가 없음
+# version: "3.9"
 
 services:
-  mlops-dev:
+  airflow:
     build: .
-    container_name: train_test
+    container_name: airflow
     env_file:
       - .env
+    ports:
+      - "8080:8080"           # Airflow 웹서버 포트
     volumes:
-      - ./mlops-cloud-project-mlops-2:/app/mlops  # 로컬 코드 공유
-    working_dir: /app/mlops/src
-    tty: true
-    command: bash
-    
+      - ./dags:/usr/local/airflow/dags    # DAG 코드 동기화
+      - ./logs:/usr/local/airflow/logs    # 로그 저장
+      - ./src:/app/src                    # 학습/전처리 코드
+      - ./.airflowhome:/usr/local/airflow # Airflow 설정/DB 저장을 위한 볼륨 마운트
+    # environment:
+      # - AIRFLOW_HOME=/usr/local/airflow
+      # - EC2_HOST=${EC2_HOST}
+    working_dir: /usr/local/airflow
+    # entrypoint: /bin/bash -c 'chown -R 50000:0 /usr/local/airflow && exec /entrypoint.sh' 
+    # command: webserver ##
