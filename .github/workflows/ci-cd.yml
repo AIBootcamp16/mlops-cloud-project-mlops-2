@@ -12,7 +12,7 @@ jobs:
   # -------------------------------
   ci-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -77,7 +77,7 @@ jobs:
   # CD: Merge 후 EC2에 배포
   # -------------------------------
   cd-deploy:
-    if: github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
     runs-on: ubuntu-latest
 
     steps:
