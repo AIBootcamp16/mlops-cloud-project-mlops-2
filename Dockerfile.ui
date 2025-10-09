@@ -1,23 +1,56 @@
 # ============================================================
-# 🖥️ Streamlit Frontend Dockerfile (for GHCR)
+# 🎨 Streamlit UI Dockerfile (최적화 버전)
+# ------------------------------------------------------------
+# Base: Python 3.10 slim
+# 목적: 빠르고 가벼운 UI 컨테이너 이미지 빌드
 # ============================================================
 
-FROM python:3.10-slim AS builder
-WORKDIR /install
-
-COPY requirements_ui.txt .
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-RUN pip install --prefix=/install --no-cache-dir -r requirements_ui.txt
+FROM python:3.10-slim AS runtime
 
 # ------------------------------------------------------------
-FROM python:3.10-slim AS runtime
+# 1. 필수 패키지 설치 (기본 시스템 의존성)
+# ------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# 2. 작업 디렉토리 설정
+# ------------------------------------------------------------
 WORKDIR /app
 
-COPY --from=builder /install /usr/local
-COPY web ./web
+# ------------------------------------------------------------
+# 3. Python 패키지 의존성 설치
+# ------------------------------------------------------------
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# .env 복사 (없어도 빌드 통과)
-COPY .env ./.env
+# ------------------------------------------------------------
+# 4. 소스코드 복사
+# ------------------------------------------------------------
+COPY ./src ./src
+COPY ./dataset ./dataset
+COPY ./static ./static
 
+# ------------------------------------------------------------
+# 5. 환경 설정 파일 복사 (.env.safe → .env)
+#    ⚠️ GitHub Actions 환경에서는 .env 파일이 포함되지 않으므로
+#       안전한 테스트용 .env.safe를 대신 사용합니다.
+# ------------------------------------------------------------
+COPY .env.safe ./.env
+
+# ------------------------------------------------------------
+# 6. Streamlit 포트 설정 및 캐시 비활성화
+# ------------------------------------------------------------
 EXPOSE 8501
-CMD ["streamlit", "run", "web/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+# ------------------------------------------------------------
+# 7. 실행 명령
+# ------------------------------------------------------------
+CMD ["streamlit", "run", "src/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

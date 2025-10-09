@@ -1,56 +1,58 @@
 # ============================================================
-# 🚀 Dockerfile.api — FastAPI Backend for MLOps Music Recommender
+# ⚙️ FastAPI Backend Dockerfile (최적화 버전)
 # ------------------------------------------------------------
-# ✅ 특징
-# - python:3.11-slim 기반 (경량)
-# - LightGBM 실행을 위한 libgomp1 포함
-# - requirements_api.txt 사용
-# - models / dataset 디렉토리 없을 경우 자동 생성
-# - CI/CD 및 로컬 실행 모두 호환
+# Base: Python 3.10 slim
+# 목적: API 서버용 경량 컨테이너 이미지 빌드
 # ============================================================
 
-FROM python:3.11-slim AS base
+FROM python:3.10-slim AS runtime
 
 # ------------------------------------------------------------
-# 1️⃣ 환경 변수 설정
-# ------------------------------------------------------------
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=off \
-    PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PATH="/root/.local/bin:$PATH"
-
-WORKDIR /app/mlops
-
-# ------------------------------------------------------------
-# 2️⃣ 시스템 패키지 설치 (LightGBM/FAISS 등 실행용)
+# 1. 시스템 패키지 설치
 # ------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 curl build-essential && \
-    rm -rf /var/lib/apt/lists/*
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------
-# 3️⃣ Python 의존성 설치
+# 2. 작업 디렉토리 설정
 # ------------------------------------------------------------
-COPY requirements_api.txt .
-RUN pip install --no-cache-dir -r requirements_api.txt
+WORKDIR /app
 
 # ------------------------------------------------------------
-# 4️⃣ 프로젝트 파일 복사
+# 3. 의존성 설치
 # ------------------------------------------------------------
-COPY src ./src
- 
-# 모델 및 데이터 디렉토리 (없어도 오류 없이 생성)
-RUN mkdir -p models dataset
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ------------------------------------------------------------
-# 5️⃣ 헬스체크 (FastAPI /health 엔드포인트)
+# 4. 애플리케이션 코드 복사
 # ------------------------------------------------------------
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
- CMD curl -f http://localhost:8000/health || exit 1
+COPY ./src ./src
+COPY ./dataset ./dataset
+COPY ./models ./models
 
 # ------------------------------------------------------------
-# 6️⃣ FastAPI 실행
+# 5. 환경 설정 파일 복사 (.env.safe → .env)
+#    ⚠️ CI/CD 환경에서는 .env 파일이 GitHub에 포함되지 않으므로,
+#       테스트용 .env.safe를 대신 사용합니다.
 # ------------------------------------------------------------
+COPY .env.safe ./.env
+
+# ------------------------------------------------------------
+# 6. FastAPI 서버 환경 변수 설정
+# ------------------------------------------------------------
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV UVICORN_PORT=8000
+
 EXPOSE 8000
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# ------------------------------------------------------------
+# 7. 실행 명령
+# ------------------------------------------------------------
+# uvicorn으로 FastAPI 서버 실행 (핫리로드 없이 프로덕션 모드)
+CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]
