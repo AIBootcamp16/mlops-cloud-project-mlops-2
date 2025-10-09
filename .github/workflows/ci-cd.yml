@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  # pull_request:
-  #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
-  pull_request_target:
-    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
+  # pull_request_target:
+  #   branches: [ "main" ]
   push:
     branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
@@ -14,9 +14,8 @@ jobs:
   # -------------------------------
   ci-test:
     runs-on: ubuntu-latest
-    # if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
-    # if: github.event_name == 'pull_request_target'
     if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
+    # if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
