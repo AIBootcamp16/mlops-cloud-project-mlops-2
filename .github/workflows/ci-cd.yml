@@ -1,8 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  pull_request:
-    branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
+  # pull_request:
+  #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
+  pull_request_target:
+    branches: [ "main" ]
   push:
     branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
@@ -22,26 +24,26 @@ jobs:
         with:
           python-version: "3.10"
 
-      # - name: Install dependencies (skip if unchanged)
-      #   id: install
-      #   run: |
-      #     if git diff --name-only HEAD~1 HEAD | grep -qE 'requirements.txt'; then
-      #       pip install -r requirements.txt
-      #     else
-      #       echo "requirements.txt unchanged, skipping install"
-
-      # 캐시 key는 requirements.txt의 해시를 기준으로 설정
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install dependencies (skip if unchanged)
         run: |
-          pip install -r requirements.txt
+          if git diff --name-only HEAD~1 HEAD | grep -qE 'requirements.txt'; then
+            pip install -r requirements.txt
+          else
+            echo "requirements.txt unchanged, skipping install"
+          fi
+
+      # 캐시 key는 requirements.txt의 해시를 기준으로 설정
+      # - name: Cache pip dependencies
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.cache/pip
+      #     key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-pip-
+
+      # - name: Install dependencies (skip if unchanged)
+      #   run: |
+      #     pip install -r requirements.txt
 
       - name: Run lint and basic tests
         run: |
@@ -137,19 +139,7 @@ jobs:
         with:
           payload: |
             {
-              "text": ":tada: *배포 완료!*",
-              "attachments": [
-                {
-                  "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}",
-                  "fields": [
-                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
-                    { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
-                    { "title": "Deployed To", "value": "EC2 - ${{ secrets.EC2_HOST }}", "short": false },
-                    { "title": "Status", "value": "${{ job.status }}", "short": true },
-                    { "title": "Commit", "value": "${{ github.sha }}", "short": false }
-                  ]
-                }
-              ]
+              "text": ":tada: *배포 완료!*\nBranch: `${{ github.ref_name }}`\nRepository: `${{ github.repository }}`\nDeployed To: `EC2 - ${{ secrets.EC2_HOST }}`\nStatus: `${{ job.status }}`\nCommit: `${{ github.sha }}`\nAuthor: `${{ github.actor }}`\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|Go to commit>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
