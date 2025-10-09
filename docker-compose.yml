@@ -1,25 +1,18 @@
 # ============================================================
-# 🎧 MLOps Music Recommender System - Unified Docker Compose
+# 🧩 MLOps Project - Local Docker Compose
 # ------------------------------------------------------------
-# 구성 요소:
-#   - FastAPI (Backend API)
-#   - Streamlit (Frontend UI)
-#   - MLflow (Tracking & Model Registry)
-#   - Airflow (Pipeline Orchestration)
-# ------------------------------------------------------------
-# 태그 기반 CI/CD (GitHub Actions build.yml)와 동일한 서비스명 유지
+# 목적:
+#   - 로컬에서 FastAPI + Streamlit UI 통합 실행
+#   - CI/CD 빌드 구조와 동일한 이미지 구조 유지
 # ============================================================
 
 version: "3.9"
 
 services:
-  # ============================================================
-  # 🎵 FASTAPI Backend Service
-  # ------------------------------------------------------------
-  # - 모델 예측 및 아티팩트 로드 담당
-  # - /health 엔드포인트로 상태 확인
-  # ============================================================
-  music_recommender_api:
+  # ----------------------------------------------------------
+  # 🐍 FastAPI Backend
+  # ----------------------------------------------------------
+  api_service:
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -27,105 +20,53 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.safe
     volumes:
-      - ./src:/app/mlops/src:ro
-      - ./models:/app/mlops/models:ro
-      - ./dataset:/app/mlops/dataset:ro
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-    networks:
-      - mlops_net
+      - ./src:/app/src
+      - ./dataset:/app/dataset
+      - ./models:/app/models   # ✅ 루트 models 폴더 마운트
+    command: uvicorn src.api.api:app --host 0.0.0.0 --port 8000
 
-  # ============================================================
-  # 🖥️ STREAMLIT Frontend UI
-  # ------------------------------------------------------------
-  # - 사용자 검색/추천 결과 시각화
-  # - API 서비스 헬스체크 후 실행
-  # ============================================================
-  music_recommender_ui:
+  # ----------------------------------------------------------
+  # 🎨 Streamlit UI
+  # ----------------------------------------------------------
+  ui_service:
     build:
       context: .
       dockerfile: Dockerfile.ui
     container_name: music_recommender_ui
     ports:
       - "8501:8501"
-    env_file:
-      - .env
     depends_on:
-      music_recommender_api:
-        condition: service_healthy
+      - api_service
+    env_file:
+      - .env.safe
     volumes:
       - ./web:/app/web
-      - ~/.streamlit/secrets.toml:/root/.streamlit/secrets.toml:ro
-    restart: always
-    networks:
-      - mlops_net
+      - ./dataset:/app/dataset
+    command: streamlit run web/streamlit_app.py --server.port=8501 --server.address=0.0.0.0
 
-  # ============================================================
-  # 📊 MLflow Tracking Server
-  # ------------------------------------------------------------
-  # - 실험 관리 및 모델 버전 트래킹
-  # ============================================================
+  # ----------------------------------------------------------
+  # 📊 MLflow Tracking (optional)
+  # ----------------------------------------------------------
   mlops_runner:
     build:
       context: .
       dockerfile: Dockerfile.mlflow
     container_name: mlops_runner
-    env_file:
-      - .env
     ports:
       - "5000:5000"
-    volumes:
-      - ./mlruns:/mlflow/mlruns
-      - ./models:/mlflow/models
-    working_dir: /app/mlops/src
-    command: >
-      bash -c "mlflow server
-      --backend-store-uri sqlite:///mlflow.db
-      --default-artifact-root ./mlruns
-      --host 0.0.0.0 --port 5000"
-    restart: unless-stopped
-    networks:
-      - mlops_net
-
-  # ============================================================
-  # 🪶 AIRFLOW Pipeline Orchestrator
-  # ------------------------------------------------------------
-  # - DAG 기반 파이프라인 스케줄링
-  # - Admin 계정 자동 생성, 포트 8080 고정
-  # ============================================================
-  mlops_airflow:
-    build:
-      context: .
-      dockerfile: Dockerfile.airflow
-    container_name: mlops_airflow
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./dags:/usr/local/airflow/dags
-      - ./tmp:/tmp
     environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    command: >
-      bash -c "
-      airflow db init &&
-      airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin123 &&
-      airflow webserver -p 8080 & airflow scheduler
-      "
-    restart: unless-stopped
-    networks:
-      - mlops_net
+      - MLFLOW_TRACKING_URI=http://0.0.0.0:5000
+      - BACKEND_STORE_URI=sqlite:///mlflow.db
+    volumes:
+      - ./mlruns:/app/mlruns
 
 # ============================================================
-# 🌐 NETWORK CONFIGURATION
+# 🔹 실행 방법
 # ------------------------------------------------------------
-# 모든 서비스가 공유하는 내부 브리지 네트워크
+# ▶ docker compose up --build
+# ▶ Streamlit: http://localhost:8501
+# ▶ FastAPI:   http://localhost:8000
+# ▶ MLflow:    http://localhost:5000
 # ============================================================
-networks:
-  mlops_net:
-    driver: bridge
