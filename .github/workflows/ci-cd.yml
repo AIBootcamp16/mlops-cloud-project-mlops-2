@@ -14,8 +14,9 @@ jobs:
   # -------------------------------
   ci-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
-    # if: github.event_name == 'pull_request_target'
+    # if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
+    # if: github.event_name == 'pull_request_target' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -33,48 +34,33 @@ jobs:
             echo "requirements.txt unchanged, skipping install"
           fi
 
-      # 캐시 key는 requirements.txt의 해시를 기준으로 설정
-      # - name: Cache pip dependencies
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.cache/pip
-      #     key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-pip-
-
-      # - name: Install dependencies (skip if unchanged)
-      #   run: |
-      #     pip install -r requirements.txt
-
       - name: Run lint and basic tests
         run: |
           echo "✅ Running code validation..."
           python -m compileall .
           echo "✅ Code syntax check passed."
 
-      # Slack PR 알림
-      - name: Notify Slack about PR
-        if: always()
+      # Slack PR 알림 (각자 secret에 SLACK_WEBHOOK_URL 설정 필요)
+      - name: Notify Slack about PR (only if secret exists)
+        # if: always()
+        if: ${{ env.SLACK_SECRET_EXISTS == 'true' }} && github.repository != 'AIBootcamp16/mlops-cloud-project-mlops-2'
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
             {
-              "text": ":rocket: *새로운 Pull Request가 있습니다*",
-              "attachments": [
-                {
-                  "color": "#36a64f",
-                  "fields": [
-                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
-                    { "title": "PR Title", "value": "${{ github.event.pull_request.title }}", "short": true },
-                    { "title": "Author", "value": "${{ github.event.pull_request.user.login }}", "short": true },
-                    { "title": "Status", "value": "${{ job.status }}", "short": true },
-                    { "title": "View PR", "value": "${{ github.event.pull_request.html_url }}" }
-                  ]
-                }
-              ]
+              "text": ":rocket: *새로운 Pull Request가 있습니다!*\nRepo: `${{ github.repository }}`\nAuthor: `${{ github.actor }}`\n<${{ github.event.pull_request.html_url }}|View PR>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Detect if SLACK_WEBHOOK_URL secret exists
+        id: check-secret
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            echo "SLACK_SECRET_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "SLACK_SECRET_EXISTS=false" >> $GITHUB_ENV
+          fi
 
   # -------------------------------
   # CD: Merge 후 EC2에 배포
@@ -144,59 +130,3 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-            
-  # build:
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-
-  #     # 코드만 수정 시 → 컨테이너 volume에 mount된 코드로 배포, rebuild 생략
-  #     - name: Decide if rebuild is needed
-  #       id: rebuild
-  #       run: |
-  #         if git diff --name-only HEAD~1 HEAD | grep -qE 'Dockerfile|requirements.txt'; then
-  #           echo "REBUILD=true" >> $GITHUB_ENV
-  #         else
-  #           echo "REBUILD=false" >> $GITHUB_ENV
-  #         fi
-  #     ##############################################################
-
-  #     - name: Log in to Docker Hub
-  #       uses: docker/login-action@v2
-  #       with:
-  #         username: ${{ secrets.DOCKER_HUB_USERNAME }}
-  #         password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-
-  #     - name: Build and push Docker image (if needed)
-  #       if: env.REBUILD == 'true'
-  #       run: |
-  #         IMAGE_TAG="becky77/mlops:${GITHUB_SHA::8}"
-  #         echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-  #         docker build -t $IMAGE_TAG .
-  #         docker push $IMAGE_TAG
-
-  #     - name: (Debug) Check EC2 Host Value 
-  #       run: echo "The EC2_HOST value is.. ${{ secrets.EC2_HOST }}"
-
-  #     - name: Deploy to EC2
-  #       uses: appleboy/ssh-action@v0.1.7
-  #       if: github.ref == 'refs/heads/main'      # main 브랜치 push 시만 실행
-  #       with:
-  #         host: ${{ secrets.EC2_HOST }}
-  #         username: ubuntu
-  #         key: ${{ secrets.EC2_SSH_KEY }}
-
-  #         script: |
-  #           cd /home/ubuntu/mlops-cloud-project-mlops-2
-  #           if [ "${REBUILD}" == "true" ]; then
-  #             docker pull $IMAGE_TAG
-  #             docker compose down
-  #             docker compose up -d --build
-  #           else
-  #             docker compose restart airflow
-  #           fi
