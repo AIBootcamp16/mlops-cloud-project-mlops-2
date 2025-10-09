@@ -1,10 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  pull_request:
-    branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
-  # pull_request_target:
-  #   branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
+  pull_request_target:
+    branches: [ "main" ]
   push:
     branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     # if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
     # if: github.event_name == 'pull_request_target' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
-    if: github.event_name == 'pull_request'
+    # if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -40,10 +41,7 @@ jobs:
           python -m compileall .
           echo "✅ Code syntax check passed."
 
-      # Slack PR 알림 (각자 secret에 SLACK_WEBHOOK_URL 설정 필요)
-      - name: Notify Slack about PR (only if secret exists)
-        # if: always()
-        if: ${{ env.SLACK_SECRET_EXISTS == 'true' }} && github.repository != 'AIBootcamp16/mlops-cloud-project-mlops-2'
+      - name: Send Slack notification (safe for fork PRs)
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
@@ -53,14 +51,27 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Detect if SLACK_WEBHOOK_URL secret exists
-        id: check-secret
-        run: |
-          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
-            echo "SLACK_SECRET_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "SLACK_SECRET_EXISTS=false" >> $GITHUB_ENV
-          fi
+      # - name: Detect if SLACK_WEBHOOK_URL secret exists
+      #   id: check-secret
+      #   run: |
+      #     if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+      #       echo "SLACK_SECRET_EXISTS=true" >> $GITHUB_ENV
+      #     else
+      #       echo "SLACK_SECRET_EXISTS=false" >> $GITHUB_ENV
+      #     fi
+
+      # # Slack PR 알림 (각자 secret에 SLACK_WEBHOOK_URL 설정 필요)
+      # - name: Notify Slack about PR (only if secret exists)
+      #   # if: always()
+      #   if: ${{ env.SLACK_SECRET_EXISTS == 'true' }} && github.repository != 'AIBootcamp16/mlops-cloud-project-mlops-2'
+      #   uses: slackapi/slack-github-action@v1.27.0
+      #   with:
+      #     payload: |
+      #       {
+      #         "text": ":rocket: *새로운 Pull Request가 있습니다!*\nRepo: `${{ github.repository }}`\nAuthor: `${{ github.actor }}`\n<${{ github.event.pull_request.html_url }}|View PR>"
+      #       }
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # -------------------------------
   # CD: Merge 후 EC2에 배포
