@@ -14,7 +14,8 @@ jobs:
   # -------------------------------
   ci-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
+    # if: github.event_name == 'pull_request' && github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2'
+    if: github.event_name == 'pull_request_target'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
