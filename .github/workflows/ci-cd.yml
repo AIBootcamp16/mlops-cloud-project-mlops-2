@@ -4,15 +4,15 @@ on:
   pull_request:
     branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
   push:
-    branches: [ "main" ]   # main에 merge 후 자동 배포 (CD)
+    branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
 jobs:
   # -------------------------------
   # CI: Pull Request 시 코드 검증
   # -------------------------------
   ci-test:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -22,18 +22,26 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 캐시 key는 requirements.txt의 해시를 기준으로 설정
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
-      - name: Install dependencies
+      - name: Install dependencies (skip if unchanged)
+        id: install
         run: |
-          pip install -r requirements.txt
+          if git diff --name-only HEAD~1 HEAD | grep -qE 'requirements.txt'; then
+            pip install -r requirements.txt
+          else
+            echo "requirements.txt unchanged, skipping install"
+
+      # 캐시 key는 requirements.txt의 해시를 기준으로 설정
+      # - name: Cache pip dependencies
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: ~/.cache/pip
+      #     key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-pip-
+
+      # - name: Install dependencies (skip if unchanged)
+      #   run: |
+      #     pip install -r requirements.txt
 
       - name: Run lint and basic tests
         run: |
@@ -69,7 +77,7 @@ jobs:
   # CD: Merge 후 EC2에 배포
   # -------------------------------
   cd-deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -124,7 +132,7 @@ jobs:
 
       # ✅ Slack 알림 (배포 완료 시)
       - name: Notify Slack - Deployment Complete
-        if: always()
+        if: success()
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
