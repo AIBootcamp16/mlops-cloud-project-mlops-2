@@ -135,7 +135,7 @@ jobs:
             fi
             echo "✅ Deployment complete on EC2"
 
-      # ✅ Slack 알림 (배포 완료 시)
+      # Slack 알림 (배포 완료 시)
       - name: Notify Slack - Deployment Complete
         if: always()
         uses: slackapi/slack-github-action@v1.27.0
