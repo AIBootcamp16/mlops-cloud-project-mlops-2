@@ -2,8 +2,8 @@
 # 🚀 GitHub Actions: CI/CD for gogoAiHunters MLOps Project
 # ------------------------------------------------------------
 # 트리거:
-#   - main 브랜치 푸시 시 자동 빌드
-#   - 브랜치 상관없이 v* 태그 푸시 시 GHCR 빌드 실행
+#   - main, stable-local-v1 브랜치 push
+#   - v* 태그 push
 # ============================================================
 
 name: Build and Push to gogoAiHunters GHCR
@@ -12,10 +12,10 @@ on:
   push:
     branches:
       - main
-      - stable-local-v1   # ← 로컬 브랜치에서 푸시해도 인식
+      - stable-local-v1
     tags:
       - "v*"
-  workflow_dispatch:       # 수동 실행 버튼도 허용
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io

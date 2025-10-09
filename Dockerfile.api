@@ -2,14 +2,12 @@
 # 🐍 FastAPI Backend - Dockerfile (Optimized for CI/CD & GHCR)
 # ------------------------------------------------------------
 # - Python 3.10-slim 기반 (경량)
-# - requirements.txt 캐시 최적화
+# - requirements_api.txt 캐시 최적화
 # - models 폴더 제외 (런타임 로드)
 # - 안전한 .env 처리 (.env.safe fallback)
 # ============================================================
 
-# 1️⃣ Build Stage
 FROM python:3.10-slim AS builder
-
 WORKDIR /app
 
 # ------------------------------------------------------------
@@ -21,10 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # ------------------------------------------------------------
 # 🧱 Python dependencies 캐시 최적화
-# requirements.txt만 복사 후 pip install
 # ------------------------------------------------------------
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements_api.txt ./requirements_api.txt
+RUN pip install --no-cache-dir -r requirements_api.txt
 
 # ------------------------------------------------------------
 # 📦 애플리케이션 코드 복사
@@ -32,7 +29,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ------------------------------------------------------------
 COPY ./src ./src
 COPY ./dataset ./dataset
-# COPY ./models ./models   # ❌ 제거됨 (빌드 시 필요 없음)
 
 # ------------------------------------------------------------
 # ⚙️ 환경 변수 파일 처리 (.env 또는 .env.safe)

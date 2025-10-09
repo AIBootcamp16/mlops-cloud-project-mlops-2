@@ -6,44 +6,35 @@
 # ============================================================
 
 FROM python:3.10-slim AS runtime
+WORKDIR /app
 
 # ------------------------------------------------------------
 # 1. 필수 패키지 설치 (기본 시스템 의존성)
 # ------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libssl-dev \
-    libffi-dev \
-    curl \
+    build-essential libssl-dev libffi-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------
-# 2. 작업 디렉토리 설정
+# 2. Python 패키지 의존성 설치
 # ------------------------------------------------------------
-WORKDIR /app
+COPY requirements_ui.txt ./requirements_ui.txt
+RUN pip install --no-cache-dir -r requirements_ui.txt
 
 # ------------------------------------------------------------
-# 3. Python 패키지 의존성 설치
-# ------------------------------------------------------------
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
-# ------------------------------------------------------------
-# 4. 소스코드 복사
+# 3. 소스코드 복사
 # ------------------------------------------------------------
 COPY ./src ./src
 COPY ./dataset ./dataset
 COPY ./static ./static
 
 # ------------------------------------------------------------
-# 5. 환경 설정 파일 복사 (.env.safe → .env)
-#    ⚠️ GitHub Actions 환경에서는 .env 파일이 포함되지 않으므로
-#       안전한 테스트용 .env.safe를 대신 사용합니다.
+# 4. 환경 설정 파일 복사 (.env.safe → .env)
 # ------------------------------------------------------------
 COPY .env.safe ./.env
 
 # ------------------------------------------------------------
-# 6. Streamlit 포트 설정 및 캐시 비활성화
+# 5. Streamlit 포트 설정 및 캐시 비활성화
 # ------------------------------------------------------------
 EXPOSE 8501
 ENV STREAMLIT_SERVER_PORT=8501
@@ -51,6 +42,6 @@ ENV STREAMLIT_SERVER_HEADLESS=true
 ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 # ------------------------------------------------------------
-# 7. 실행 명령
+# 6. 실행 명령
 # ------------------------------------------------------------
 CMD ["streamlit", "run", "src/ui/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
