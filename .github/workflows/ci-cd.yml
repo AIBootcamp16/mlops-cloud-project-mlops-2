@@ -118,7 +118,6 @@ jobs:
           echo "DEPLOY_AT_KST=$DEPLOY_AT_KST" >> $GITHUB_ENV
 
       - name: Notify Slack - Deployment Complete
-        if: always()
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
