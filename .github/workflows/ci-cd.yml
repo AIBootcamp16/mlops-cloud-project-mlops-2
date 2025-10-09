@@ -9,9 +9,9 @@ on:
     branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
 jobs:
-  # -------------------------------
+  # ----------------------------------
   # CI: Pull Request 시 코드 검증, slack
-  # -------------------------------
+  # ----------------------------------
   ci-test:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request_target'
