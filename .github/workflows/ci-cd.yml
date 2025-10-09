@@ -4,15 +4,15 @@ on:
   pull_request:
     branches: [ "main" ]   # PR 생성 시 코드 테스트 (CI)
   push:
-    branches: [ "main" ]   # main에 merge 후 자동 배포 (CD)
+    branches: [ "main" ]   # main 브랜치에 merge 후 CD 실행
 
 jobs:
   # -------------------------------
   # CI: Pull Request 시 코드 검증
   # -------------------------------
   ci-test:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -21,6 +21,14 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+
+      # - name: Install dependencies (skip if unchanged)
+      #   id: install
+      #   run: |
+      #     if git diff --name-only HEAD~1 HEAD | grep -qE 'requirements.txt'; then
+      #       pip install -r requirements.txt
+      #     else
+      #       echo "requirements.txt unchanged, skipping install"
 
       # 캐시 key는 requirements.txt의 해시를 기준으로 설정
       - name: Cache pip dependencies
@@ -31,7 +39,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Install dependencies (skip if unchanged)
         run: |
           pip install -r requirements.txt
 
@@ -41,11 +49,35 @@ jobs:
           python -m compileall .
           echo "✅ Code syntax check passed."
 
+      # Slack 알림
+      - name: Notify Slack about PR
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":rocket: *새로운 Pull Request가 있습니다*",
+              "attachments": [
+                {
+                  "color": "#36a64f",
+                  "fields": [
+                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
+                    { "title": "PR Title", "value": "${{ github.event.pull_request.title }}", "short": true },
+                    { "title": "Author", "value": "${{ github.event.pull_request.user.login }}", "short": true },
+                    { "title": "Status", "value": "${{ job.status }}", "short": true },
+                    { "title": "View PR", "value": "${{ github.event.pull_request.html_url }}" }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   # -------------------------------
   # CD: Merge 후 EC2에 배포
   # -------------------------------
   cd-deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository == 'AIBootcamp16/mlops-cloud-project-mlops-2' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -96,6 +128,31 @@ jobs:
             else
               docker compose restart airflow
             fi
+            echo "✅ Deployment complete on EC2"
+
+      # ✅ Slack 알림 (배포 완료 시)
+      - name: Notify Slack - Deployment Complete
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":tada: *배포 완료!*",
+              "attachments": [
+                {
+                  "color": "${{ job.status == 'success' && '#36a64f' || '#ff0000' }}",
+                  "fields": [
+                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
+                    { "title": "Branch", "value": "${{ github.ref_name }}", "short": true },
+                    { "title": "Deployed To", "value": "EC2 - ${{ secrets.EC2_HOST }}", "short": false },
+                    { "title": "Status", "value": "${{ job.status }}", "short": true },
+                    { "title": "Commit", "value": "${{ github.sha }}", "short": false }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
             
   # build:
   #   runs-on: ubuntu-latest
