@@ -22,26 +22,26 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install dependencies (skip if unchanged)
-        id: install
-        run: |
-          if git diff --name-only HEAD~1 HEAD | grep -qE 'requirements.txt'; then
-            pip install -r requirements.txt
-          else
-            echo "requirements.txt unchanged, skipping install"
+      # - name: Install dependencies (skip if unchanged)
+      #   id: install
+      #   run: |
+      #     if git diff --name-only HEAD~1 HEAD | grep -qE 'requirements.txt'; then
+      #       pip install -r requirements.txt
+      #     else
+      #       echo "requirements.txt unchanged, skipping install"
 
       # 캐시 key는 requirements.txt의 해시를 기준으로 설정
-      # - name: Cache pip dependencies
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: ~/.cache/pip
-      #     key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-pip-
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      # - name: Install dependencies (skip if unchanged)
-      #   run: |
-      #     pip install -r requirements.txt
+      - name: Install dependencies (skip if unchanged)
+        run: |
+          pip install -r requirements.txt
 
       - name: Run lint and basic tests
         run: |
