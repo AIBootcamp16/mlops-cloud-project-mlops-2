@@ -4,10 +4,6 @@
 # 트리거:
 #   - main 브랜치 푸시 시 자동 빌드
 #   - 태그(v*) 푸시 시 GHCR에 Docker 이미지 업로드
-# 주요 기능:
-#   - FastAPI / Streamlit Docker 이미지 빌드 및 테스트
-#   - GHCR (GitHub Container Registry)에 업로드
-#   - Spotify API Secrets 자동 주입
 # ============================================================
 
 name: Build and Push to gogoAiHunters GHCR
@@ -21,7 +17,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  ORG: gogoaihunter                      # ⚠️ 반드시 소문자 (GHCR 제한)
+  ORG: ${{ github.repository_owner }}   # ✅ 자동 감지로 오너 일치
   IMAGE_API: mlops-cloud-project-mlops-2-api
   IMAGE_UI: mlops-cloud-project-mlops-2-ui
 
