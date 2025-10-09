@@ -77,6 +77,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ubuntu/mlops-cloud-project-mlops-2
+            echo "🔄 Pulling latest code from main branch..."
+            git fetch origin main
+            git pull origin main
             if [ "${REBUILD}" == "true" ]; then
               docker pull $IMAGE_TAG
               docker compose down
