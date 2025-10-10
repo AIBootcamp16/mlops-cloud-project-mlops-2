@@ -1,0 +1,12 @@
+
+services:
+  mlops:
+    image: itgitg/mlops-dev:latest
+    container_name: train_test
+    env_file:
+      - .env
+    volumes:
+      - "C:/Users/USER/Desktop/a2/mlops-cloud-project-mlops-2:/app/mlops"  # 로컬 코드 공유
+    working_dir: /app/mlops/
+    tty: true
+    command: bash
