@@ -39,7 +39,7 @@ Kaggle의 Spotify 1Million Track Dataset을 활용하여 **메타데이터 / 오
 
 | 김소은 | 김재록 | 김종화 | 최보경 | 황은혜 |
 | :----: | :----: | :----: | :----: | :----: |
-| [김소은](https://github.com/oriori88)<br>데이터전처리, api구현, UI개발 | [김재록](https://github.com/UpstageAILab)<br>데이터시각화, 재현성확보 | [김종화](https://github.com/UpstageAILab)<br>모델 학습 및 모델 서버 구축 | [최보경](https://github.com/UpstageAILab)<br>CI/CD | [황은혜](https://github.com/UpstageAILab)<br>airflow |
+| 데이터전처리, api구현, UI개발 | 데이터시각화, 재현성확보 | 모델 학습 및 모델 서버 구축 | CI/CD | airflow |
 
 
 <br>
