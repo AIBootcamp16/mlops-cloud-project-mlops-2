@@ -107,7 +107,7 @@ jobs:
               docker compose down
               docker compose up -d --build
             else
-              docker compose restart airflow
+              docker compose restart scheduler
             fi
             echo "✅ Deployment complete on EC2"
 
@@ -117,7 +117,7 @@ jobs:
           DEPLOY_AT_KST=$(date -d "$DEPLOY_AT_UTC +9 hours" +"%Y-%m-%d %H:%M:%S")
           echo "DEPLOY_AT_KST=$DEPLOY_AT_KST" >> $GITHUB_ENV
 
-      # 커밋메세지 때문에 오류나서.. 별도로 빼줌
+      # 커밋메세지 큰따옴표 json 오류 방지
       - name: Sanitize commit message
         run: |
           echo "CLEAN_COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | sed 's/"/\\"/g')" >> $GITHUB_ENV

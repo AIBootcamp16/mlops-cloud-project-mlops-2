@@ -1,23 +1,96 @@
-# Docker Compose의 최신 버전(v2, docker compose 명령어를 사용하는 버전)에서는 
-# docker-compose.yml 파일 내에 version: "3.x"와 같은 필드를 명시적으로 지정할 필요가 없음
-# version: "3.9"
+version: "3.8"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.7.3
+  env_file:
+    - .env
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__WEBSERVER__BASE_URL: http://localhost:8080
+    # src 파이썬 경로에 추가. DAG에서 바로 import 가능
+    PYTHONPATH: /opt/airflow
+    # 개발 중 필요한 패키지 있으면 여기에 공백으로 추가(옵션)
+    _PIP_ADDITIONAL_REQUIREMENTS: "pandas scikit-learn"
+    
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/src
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./dataset:/opt/airflow/dataset
+    - /var/run/docker.sock:/var/run/docker.sock   #추가함
+    - ../mlops:/opt/mlops #추가함
+    - ./mlflow_compose:/opt/airflow/mlflow_compose
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
 
 services:
-  airflow:
-    build: .
-    container_name: airflow
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      retries: 5
+      start_period: 5s
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+    - -c
+    - |
+      mkdir -p /sources/{logs,dags,plugins}
+      chown -R "${AIRFLOW_UID}:0" /sources/{logs,dags,plugins}
+      exec /entrypoint airflow version
+    
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+    user: "0:0"
     env_file:
       - .env
-    ports:
-      - "8080:8080"           # Airflow 웹서버 포트
     volumes:
-      - ./dags:/usr/local/airflow/dags    # DAG 코드 동기화
-      - ./logs:/usr/local/airflow/logs    # 로그 저장
-      - ./src:/app/src                    # 학습/전처리 코드
-      - ./.airflowhome:/usr/local/airflow # Airflow 설정/DB 저장을 위한 볼륨 마운트
-    # environment:
-      # - AIRFLOW_HOME=/usr/local/airflow
-      # - EC2_HOST=${EC2_HOST}
-    working_dir: /usr/local/airflow
-    # entrypoint: /bin/bash -c 'chown -R 50000:0 /usr/local/airflow && exec /entrypoint.sh' 
-    # command: webserver ##
+      - ${AIRFLOW_PROJ_DIR:-.}:/sources
+
+  scheduler:
+    <<: *airflow-common
+    #command: scheduler 대신 추가함
+    command: bash -c "pip install --no-cache-dir mysqlclient && airflow scheduler"
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+  webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
