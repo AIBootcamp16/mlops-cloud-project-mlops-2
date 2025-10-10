@@ -23,7 +23,7 @@ FAISS_REC.fit()
 
 FAISS_REC.save(path="./")
 
-FAISS_REC.release()
+#FAISS_REC.release()
 
 LGBM_REC = LGBMRecommender()
 
