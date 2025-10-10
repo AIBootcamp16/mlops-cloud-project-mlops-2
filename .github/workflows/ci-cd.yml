@@ -117,12 +117,17 @@ jobs:
           DEPLOY_AT_KST=$(date -d "$DEPLOY_AT_UTC +9 hours" +"%Y-%m-%d %H:%M:%S")
           echo "DEPLOY_AT_KST=$DEPLOY_AT_KST" >> $GITHUB_ENV
 
+      # 커밋메세지 때문에 오류나서.. 별도로 빼줌
+      - name: Sanitize commit message
+        run: |
+          echo "CLEAN_COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr '\n' ' ' | sed 's/"/\\"/g')" >> $GITHUB_ENV
+
       - name: Notify Slack - Deployment Complete
         uses: slackapi/slack-github-action@v1.27.0
         with:
           payload: |
             {
-              "text": ":rocket: *배포 완료 알림*\n\n*Repository:* ${{ github.repository }}\n*배포 브랜치:* ${{ github.ref_name }}\n*병합된 PR:* ${{ github.event.head_commit.message }}\n*병합자:* ${{ github.actor }}\n*배포 시각 (KST):* ${{ env.DEPLOY_AT_KST }}\n*커밋:* ${{ github.sha }}\n*배포 대상:* EC2 - ${{ secrets.EC2_HOST }}\n\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|🔗 커밋 보러가기>"
+              "text": ":rocket: *배포 완료 알림*\n\n*Repository:* ${{ github.repository }}\n*배포 브랜치:* ${{ github.ref_name }}\n*병합된 PR:* ${{ env.CLEAN_COMMIT_MSG }}\n*병합자:* ${{ github.actor }}\n*배포 시각 (KST):* ${{ env.DEPLOY_AT_KST }}\n*커밋:* ${{ github.sha }}\n*배포 대상:* EC2 - ${{ secrets.EC2_HOST }}\n\n<https://github.com/${{ github.repository }}/commit/${{ github.sha }}|🔗 커밋 보러가기>"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
