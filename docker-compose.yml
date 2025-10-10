@@ -92,5 +92,25 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
+  # Streamlit
+  streamlit:
+    <<: *airflow-common
+    command: streamlit run /opt/airflow/web/streamlit_app.py --server.address 0.0.0.0 --server.port 8501
+    ports:
+      - "8501:8501"
+    restart: always
+    depends_on:
+      - webserver
+
+  # FastAPI
+  api:
+    <<: *airflow-common
+    command: uvicorn src.api.api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    restart: always
+    depends_on:
+      - webserver
+
 volumes:
   pgdata:
