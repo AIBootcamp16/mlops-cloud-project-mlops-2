@@ -58,7 +58,7 @@ jupyter | 1.0.0
 
 <br>
 
-## Dataset Overview
+## 1. Dataset Overview
 <img width="1066" height="477" alt="image" src="https://github.com/user-attachments/assets/b037f020-4603-45da-a7cb-a543bace2650" />
 
 - 데이터셋 이름: Spotify Dataset
@@ -72,7 +72,7 @@ jupyter | 1.0.0
 
 <br>
 
-## Data Processing
+## 2. Data Processing
 <table style="border: 0">
   <tr>
     <td>
@@ -88,7 +88,7 @@ jupyter | 1.0.0
 
 <br>
 
-## Model Description
+## 3. Model Description
 **1) FAISS**
 <table>
   <tr>
@@ -124,36 +124,38 @@ jupyter | 1.0.0
 - LGBM 학습 데이터와 검증 데이터 분리
 - LGBM 모델 학습
 
-### 🏃‍➡️ 최종 모델 속도 성능 테스트
-- 환경 : EC2 - t3.small 환경 에서 테스트
-- 설정 : FAISS 유사음악 100, 최종 5개 도출
-- FAISS : 0.01485300064086914 
-- LGBM : 0.007927894592285156 
-- result : 0.0029706954956054688
-- **total : 0.025877952575683594**
-
 <br>
 
 ### *① FAISS 유사 음악 N개 추천 → ② LGBM 인기도 예측 → ③ 인기도 높은 최종 N개 도출*
 
 <br>
 
-## Architecture
+## 4. Architecture
 <img width="888" height="480" alt="image" src="https://github.com/user-attachments/assets/6f2a0945-ad8d-40fc-959b-309e6dda69ce" />
 
+#### 🚩 CI/CD 파이프라인
+<img width="426" height="286" alt="image" src="https://github.com/user-attachments/assets/b86d2f2a-989d-4102-9715-f94bb322424e" />
 
-## 1. UI Preview
-#### 🎼 음악 추천
+#### 🚩 전체 진행 플로우 (Airflow)
+<img width="1366" height="98" alt="image" src="https://github.com/user-attachments/assets/a31e2604-2afb-442d-ba1c-bf3a54f4ecf9" />
+
+* 데이터 수집 - 데이터 전처리 - mlflow 컨테이너 실행 - 모델 학습 - mlflow 컨테이너 종료 - 모델 평가
+* [mlflow 컨테이너 실행 - 모델 학습 - mlflow 컨테이너 종료] -> DAG 생성
+
+<br>
+
+## 5. UI Preview
+  #### 🎼 음악 추천
 <img width="703" height="573" alt="image" src="https://github.com/user-attachments/assets/135e2643-58d5-470c-88b5-56cfe1a482ef" />
 <img width="1021" height="464" alt="image" src="https://github.com/user-attachments/assets/b6b99e3d-fd9b-430f-8767-06d7cffd4fc4" />
 
-#### 🖥️ 모니터링
+  #### 🖥️ 모니터링
 <img width="805" height="614" alt="image" src="https://github.com/user-attachments/assets/fcb17a1a-7efd-4494-abe8-f86ec6c5e25d" />
 <img width="559" height="535" alt="image" src="https://github.com/user-attachments/assets/75a6cf81-0d6c-467d-8a93-df382b942582" />
 
 <br>
 
-## 2. Features
+## 6. Features
 🔍 **검색(Search)** : Spotify 1M Dataset 기반 트랙 검색  
 
 🎶 **Seed Selection** : 사용자가 선택한 시드곡 기반 추천 시작  
@@ -178,11 +180,9 @@ jupyter | 1.0.0
 
 🔄 **CI/CD** : Github Actions로 코드 통합/검증 및 자동 배포
 
+<br>
 
-
-
-
-## 2. 프로젝트 구조
+## 7. 프로젝트 구조
 #### 📂 Directory
 ```
 mlops-cloud-project-mlops-2
@@ -208,45 +208,20 @@ mlops-cloud-project-mlops-2
 
 ```
 
+<br>
 
+## 8. Timeline
+<img width="784" height="434" alt="image" src="https://github.com/user-attachments/assets/90fef594-fbec-423e-bbef-981c9a993b04" />
 
+Jira로 협업 및 스케줄 관리 수행
 
 <br>
 
-## 3. 설치 및 사용
-```bash
-# 1. Clone repository
-git clone https://github.com/your-repo/music-recommender.git
-cd music-recommender
+## 9. 프로젝트 회고
 
-# 2. Run with Docker Compose
-docker-compose up --build
-
-# 3. Access services
-# Streamlit UI: http://localhost:8501
-# FastAPI Docs: http://localhost:8000/docs
-# Airflow: http://localhost:8080
-# MLflow: http://localhost:5000
-```
-
-> #### 💡 사용 예시
-> 1. 사용자 UI에서 트랙 검색
-> 2. 시드곡 선택 → FastAPI 서버 호출  
-> 3. FAISS로 유사 곡 검색  
-> 4. LightGBM으로 인기도 반영  
-> 5. 추천 결과 UI에 출력 & 로그 DB 저장  
-> 6. Airflow DAG 실행으로 주기적 학습 & 평가  
-> 7. MLflow Registry에 모델 버전 관리 → 최적 모델을 Production으로 배포  
-
-
-<br>
-
-## 6. 프로젝트 회고
-
-### 📌 Conclusion
-이 프로젝트는 단순한 추천 모델 구현을 넘어, **실제 서비스 운영 환경에서의 MLOps 워크플로우**를 실습한 사례입니다.  
+#### 📌 Conclusion
+이 프로젝트는 단순한 추천 모델 구현을 넘어, **실제 서비스 운영 환경에서의 MLOps 워크플로우**를 실습했다는 점에서 의미가 깊습니다.  
 데이터 파이프라인, 모델 관리, CI/CD, 버전 관리까지 통합하여 **End-to-End MLOps 시스템**을 완성하였습니다.
-
 
 - Docker 기반 통합 환경으로 실행 안정성 확보
 - 빌드 캐시 최적화로 개발 효율 향상
@@ -254,8 +229,14 @@ docker-compose up --build
 
 <br>
 
-## 7. etc
-### 📰 참고자료
+## 10. etc
+
+#### 🎤 Presentation
+[![Presentation](https://github.com/user-attachments/assets/f762f49e-cff7-44a9-a580-feb3cbb0737a)](https://docs.google.com/presentation/d/1gg5JQc3xwXux9kp8cqvrli3G-aei9OjS/edit?slide=id.g37e30576558_5_75#slide=id.g37e30576558_5_75)
+
+이미지를 누르면 상세한 PPT를 볼 수 있습니다.
+
+#### 📚 참고자료
 - Spotify Web API Documentation
 - FastAPI Official Docs
 - Streamlit Docs
