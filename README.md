@@ -232,7 +232,7 @@ Jira로 협업 및 스케줄 관리 수행
 ## 10. etc
 
 #### 🎤 Presentation
-[![Presentation](https://github.com/user-attachments/assets/f762f49e-cff7-44a9-a580-feb3cbb0737a)](https://docs.google.com/presentation/d/1gg5JQc3xwXux9kp8cqvrli3G-aei9OjS/edit?slide=id.g37e30576558_5_75#slide=id.g37e30576558_5_75)
+[![Presentation](https://github.com/user-attachments/assets/2bbc0ccb-0263-4f93-ac29-0315b8979d20)](https://docs.google.com/presentation/d/19vyorym-La7C3MJQixHB4BqSferPyCJs/edit?slide=id.p1#slide=id.p1)
 
 이미지를 누르면 상세한 PPT를 볼 수 있습니다.
 
